@@ -1,0 +1,12 @@
+# Teste rápido de ponta a ponta. Rode antes de abrir PR.
+name: smoke
+seeds:
+results_dir:
+variants:
+  - total_timesteps:
+    learning_starts:
+    epsilon_decay_steps:
+evaluation:
+  eval_freq:
+  eval_episodes:
+  final_eval_episodes:

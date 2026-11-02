@@ -1,0 +1,5 @@
+# Rodada final: a melhor configuração (já copiada para hyperparameters.yaml) com mais seeds,
+# para comparar com o SB3.
+name: final
+seeds:
+variants:

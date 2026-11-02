@@ -1,0 +1,44 @@
+[project]
+name = "dqn-lunar-lander"
+version = "0.1.0"
+description = "DQN implementado do zero para o LunarLander (TP de Aprendizado por Reforço — UFMG 2026/2)"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "gymnasium[box2d]>=1.0",
+    "torch>=2.4",
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "matplotlib>=3.8",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Só scripts/run_sb3.py usa. Nunca importar dentro de src/dqn/ (proibido pela spec).
+sb3 = ["stable-baselines3>=2.4"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dqn"]
+
+# PyTorch CPU-only no Linux/Windows (evita baixar ~2 GB de CUDA). No macOS o wheel do PyPI já é CPU.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

@@ -1,0 +1,27 @@
+# Hiperparâmetros do DQN — configuração de referência (baseline) da busca.
+# Cada sweep em configs/sweeps/ varia alguns destes valores a partir daqui.
+# Ao fim da busca, atualize este arquivo com a melhor combinação encontrada.
+
+# Otimização
+learning_rate:
+gamma:                    # fator de desconto
+batch_size:
+
+# Replay buffer
+buffer_size:
+learning_starts:          # passos aleatórios antes de começar a treinar
+
+# Rede alvo
+target_update_interval:   # passos de ambiente entre cópias online -> alvo
+
+# Exploração ε-greedy
+epsilon_start:
+epsilon_end:
+epsilon_decay_steps:
+
+# Treino
+total_timesteps:
+train_freq:               # 1 atualização de gradiente a cada N passos
+
+# Arquitetura da rede Q
+hidden_sizes:

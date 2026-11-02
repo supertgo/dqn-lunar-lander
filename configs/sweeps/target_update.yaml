@@ -1,0 +1,5 @@
+# Cada variant sobrescreve configs/hyperparameters.yaml e roda com todas as seeds.
+name: target_update
+seeds:
+variants:
+  - target_update_interval:

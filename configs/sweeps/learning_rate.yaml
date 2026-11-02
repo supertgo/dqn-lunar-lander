@@ -1,0 +1,5 @@
+# Cada variant sobrescreve configs/hyperparameters.yaml e roda com todas as seeds.
+name: learning_rate
+seeds:
+variants:
+  - learning_rate:

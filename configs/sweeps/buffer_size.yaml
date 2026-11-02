@@ -1,0 +1,5 @@
+# Cada variant sobrescreve configs/hyperparameters.yaml e roda com todas as seeds.
+name: buffer_size
+seeds:
+variants:
+  - buffer_size:

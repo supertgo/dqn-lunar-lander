@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- projeto ---
+# Pesos de modelos ficam fora do git (compartilhar o melhor via Drive/Release)
+*.pt
+# Derivados de results/runs/ — regenerados por scripts/aggregate.py
+results/aggregated/
+# Build do LaTeX
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+report/*.fls
+report/*.fdb_latexmk
+report/*.pdf
+results/smoke/
