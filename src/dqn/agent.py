@@ -9,6 +9,13 @@ from dqn.config import Hyperparameters
 from dqn.network import QNetwork
 
 
+def _epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generator) -> int:
+    # Trocar por `from dqn.exploration import epsilon_greedy`
+    if rng.random() < epsilon:
+        return int(rng.integers(len(q_values)))
+    return int(np.argmax(q_values))
+
+
 class DQNAgent:
     def __init__(
         self,
@@ -28,7 +35,12 @@ class DQNAgent:
         self.optimizer = torch.optim.Adam(self.q.parameters(), lr=hp.learning_rate)
 
     def act(self, obs: np.ndarray, epsilon: float) -> int:
-        raise NotImplementedError
+        obs_t = torch.as_tensor(obs, dtype=torch.float32)
+
+        with torch.no_grad():
+            q_values = self.q(obs_t).numpy()
+
+        return _epsilon_greedy(q_values, epsilon, self.rng)
 
     def store(
         self,

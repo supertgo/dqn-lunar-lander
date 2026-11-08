@@ -64,3 +64,25 @@ def test_different_seed_gives_different_weights():
 
     for p_a, p_b in zip(a.q.parameters(), b.q.parameters()):
         assert not torch.equal(p_a, p_b)
+
+
+def test_act_returns_valid_python_int():
+    agent = make_agent()
+    obs = np.zeros(8, dtype=np.float32)
+
+    for epsilon in (0.0, 1.0):
+        action = agent.act(obs, epsilon)
+
+        assert type(action) is int
+        assert 0 <= action < 4
+
+
+def test_act_with_zero_epsilon_is_greedy():
+    agent = make_agent()
+    obs = np.random.default_rng(42).standard_normal(8).astype(np.float32)
+
+    with torch.no_grad():
+        q_values = agent.q(torch.as_tensor(obs))
+        expected = q_values.argmax().item()
+
+    assert agent.act(obs, 0.0) == expected
