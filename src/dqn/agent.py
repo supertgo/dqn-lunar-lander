@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from dqn.replay_buffer import Batch
 from dqn.config import Hyperparameters
@@ -84,7 +85,27 @@ class DQNAgent:
         """
         Alvo: y = r + γ · (1 − done) · max_a' Q_alvo(s', a')
         """
-        raise NotImplementedError
+        batch = self.buffer.sample(self.hp.batch_size)
+        obs = torch.as_tensor(batch.obs)
+        actions = torch.as_tensor(batch.actions)
+        rewards = torch.as_tensor(batch.rewards)
+        dones = torch.as_tensor(batch.dones)
+        next_obs = torch.as_tensor(batch.next_obs)
+
+        q_all = self.q(obs)
+        q_sa = q_all[torch.arange(len(actions)), actions]
+
+        with torch.no_grad():
+            next_q = self.q_target(next_obs).max(dim=1).values
+            y = rewards + self.hp.gamma * (1 - dones) * next_q
+
+        loss = F.smooth_l1_loss(q_sa, y)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return float(loss.item())
 
     def sync_target(self) -> None:
         raise NotImplementedError
