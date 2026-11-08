@@ -30,10 +30,22 @@ def make_hp(**overrides) -> Hyperparameters:
     return Hyperparameters(**values)
 
 
-def make_agent(seed: int = 0) -> DQNAgent:
+def make_agent(seed: int = 0, **hp_overrides) -> DQNAgent:
     return DQNAgent(
-        obs_dim=OBS_DIM, n_actions=N_ACTIONS, hp=make_hp(), rng=np.random.default_rng(seed)
+        obs_dim=OBS_DIM,
+        n_actions=N_ACTIONS,
+        hp=make_hp(**hp_overrides),
+        rng=np.random.default_rng(seed),
     )
+
+
+def make_transition(rng, terminated=False):
+    obs = rng.standard_normal(OBS_DIM).astype(np.float32)
+    next_obs = rng.standard_normal(OBS_DIM).astype(np.float32)
+    action = int(rng.integers(N_ACTIONS))
+    reward = float(rng.standard_normal())
+
+    return obs, action, reward, next_obs, terminated
 
 
 def test_target_network_starts_with_same_weights_as_online():
@@ -99,3 +111,55 @@ def test_act_with_epsilon_one_is_exploratory():
 
     actions = {agent.act(obs, 1.0) for _ in range(200)}
     assert actions == set(range(N_ACTIONS))
+
+
+def test_store_adds_transitions_to_buffer():
+    agent = make_agent()
+    rng = np.random.default_rng(0)
+
+    for i in range(3):
+        agent.store(*make_transition(rng))
+        assert len(agent.buffer) == i + 1
+
+
+def test_buffer_respects_capacity():
+    capacity = 5
+    agent = make_agent(buffer_size=capacity)
+    rng = np.random.default_rng(0)
+
+    for i in range(12):
+        agent.store(*make_transition(rng))
+
+    assert len(agent.buffer) == capacity
+
+
+def test_sample_returns_batch_with_contract_shapes_and_dtypes():
+    agent = make_agent()
+    rng = np.random.default_rng(0)
+    batch_size = 4
+
+    for _ in range(10):
+        agent.store(*make_transition(rng))
+
+    batch = agent.buffer.sample(batch_size)
+
+    assert batch.obs.shape == (batch_size, OBS_DIM)
+    assert batch.obs.dtype == np.float32
+    assert batch.actions.shape == (batch_size,)
+    assert batch.actions.dtype == np.int64
+    assert batch.rewards.shape == (batch_size,)
+    assert batch.rewards.dtype == np.float32
+    assert batch.next_obs.shape == (batch_size, OBS_DIM)
+    assert batch.next_obs.dtype == np.float32
+    assert batch.dones.shape == (batch_size,)
+    assert batch.dones.dtype == np.float32
+
+
+def test_sample_converts_terminated_to_done_flag():
+    for terminated, expected in ((True, 1.0), (False, 0.0)):
+        agent = make_agent()
+        agent.store(*make_transition(np.random.default_rng(0), terminated=terminated))
+
+        batch = agent.buffer.sample(1)
+
+        assert batch.dones[0] == expected
