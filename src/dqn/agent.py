@@ -1,10 +1,12 @@
 from __future__ import annotations
-
+import copy
 from pathlib import Path
 
 import numpy as np
+import torch
 
 from dqn.config import Hyperparameters
+from dqn.network import QNetwork
 
 
 class DQNAgent:
@@ -15,7 +17,15 @@ class DQNAgent:
         hp: Hyperparameters,
         rng: np.random.Generator,
     ):
-        raise NotImplementedError
+        self.n_actions = n_actions
+        self.hp = hp
+        self.rng = rng
+
+        torch.manual_seed(int(rng.integers(2**31)))
+
+        self.q = QNetwork(obs_dim, n_actions, hp.hidden_sizes)
+        self.q_target = copy.deepcopy(self.q)
+        self.optimizer = torch.optim.Adam(self.q.parameters(), lr=hp.learning_rate)
 
     def act(self, obs: np.ndarray, epsilon: float) -> int:
         raise NotImplementedError
