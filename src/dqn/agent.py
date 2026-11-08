@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import copy
 from collections import deque
 from pathlib import Path
@@ -7,9 +8,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from dqn.replay_buffer import Batch
 from dqn.config import Hyperparameters
 from dqn.network import QNetwork
+from dqn.replay_buffer import Batch
 
 
 def _epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generator) -> int:
@@ -108,7 +109,7 @@ class DQNAgent:
         return float(loss.item())
 
     def sync_target(self) -> None:
-        raise NotImplementedError
+        self.q_target.load_state_dict(self.q.state_dict())
 
     def save(self, path: str | Path) -> None:
-        raise NotImplementedError
+        torch.save(self.q.state_dict(), path)

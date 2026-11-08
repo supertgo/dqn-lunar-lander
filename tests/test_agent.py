@@ -1,11 +1,12 @@
+from typing import Any
+
 import numpy as np
 import torch
+from pytest import approx
 
 from dqn.agent import DQNAgent
 from dqn.config import Hyperparameters
-from pytest import approx
-
-from typing import Any
+from dqn.network import QNetwork
 
 OBS_DIM = 8
 N_ACTIONS = 4
@@ -235,3 +236,70 @@ def test_update_on_non_terminal_transition_converges_to_bellman_target():
         q_sa = agent.q(torch.as_tensor(obs))[action].item()
 
     assert q_sa == approx(expected, abs=1e-2)
+
+
+def test_sync_target_copies_online_weights_to_target():
+    agent = make_agent_with_data()
+
+    for _ in range(5):
+        agent.update()
+
+    agent.sync_target()
+
+    for p_online, p_target in zip(agent.q.parameters(), agent.q_target.parameters()):
+        assert torch.equal(p_online, p_target)
+
+
+def test_sync_target_keeps_networks_independent():
+    agent = make_agent_with_data()
+    agent.update()
+    agent.sync_target()
+
+    agent.update()
+
+    pairs = zip(agent.q.parameters(), agent.q_target.parameters())
+
+    assert any(not torch.equal(p_online, p_target) for p_online, p_target in pairs)
+
+def test_save_writes_weights_that_reproduce_online_network(tmp_path):
+      agent = make_agent_with_data()
+      agent.update()
+      path = tmp_path / "model.pt"
+     
+      agent.save(path)
+     
+      loaded = QNetwork(OBS_DIM, N_ACTIONS, make_hp().hidden_sizes)
+      loaded.load_state_dict(torch.load(path))
+      obs = torch.as_tensor(
+          np.random.default_rng(0).standard_normal((5, OBS_DIM)), dtype=torch.float32
+      )
+      with torch.no_grad():
+          assert torch.equal(loaded(obs), agent.q(obs))
+ 
+def test_network_maps_batch_of_states_to_one_q_value_per_action():
+    net = QNetwork(OBS_DIM, N_ACTIONS, (16, 16))
+
+    assert net(torch.zeros(32, OBS_DIM)).shape == (32, N_ACTIONS)
+    assert net(torch.zeros(OBS_DIM)).shape == (N_ACTIONS,)
+
+
+def test_network_has_one_hidden_layer_per_hidden_size():
+    for hidden_sizes in [(64,), (64, 64), (256, 128, 64)]:
+        net = QNetwork(OBS_DIM, N_ACTIONS, hidden_sizes)
+
+        linears = [m for m in net.modules() if isinstance(m, torch.nn.Linear)]
+
+        assert [layer.out_features for layer in linears] == [*hidden_sizes, N_ACTIONS]
+
+
+def test_network_output_is_not_bounded_by_activation():
+    net = QNetwork(OBS_DIM, N_ACTIONS, (16, 16))
+    obs = torch.as_tensor(
+        np.random.default_rng(0).standard_normal((256, OBS_DIM)), dtype=torch.float32
+    )
+
+    with torch.no_grad():
+        out = net(obs)
+
+    assert (out < 0).any()
+
