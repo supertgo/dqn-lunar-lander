@@ -6,6 +6,9 @@ from dqn.config import Hyperparameters
 
 from typing import Any
 
+OBS_DIM = 8
+N_ACTIONS = 4
+
 
 def make_hp(**overrides) -> Hyperparameters:
     values: dict[str, Any] = dict(
@@ -28,7 +31,9 @@ def make_hp(**overrides) -> Hyperparameters:
 
 
 def make_agent(seed: int = 0) -> DQNAgent:
-    return DQNAgent(obs_dim=8, n_actions=4, hp=make_hp(), rng=np.random.default_rng(seed))
+    return DQNAgent(
+        obs_dim=OBS_DIM, n_actions=N_ACTIONS, hp=make_hp(), rng=np.random.default_rng(seed)
+    )
 
 
 def test_target_network_starts_with_same_weights_as_online():
@@ -68,21 +73,29 @@ def test_different_seed_gives_different_weights():
 
 def test_act_returns_valid_python_int():
     agent = make_agent()
-    obs = np.zeros(8, dtype=np.float32)
+    obs = np.zeros(OBS_DIM, dtype=np.float32)
 
     for epsilon in (0.0, 1.0):
         action = agent.act(obs, epsilon)
 
         assert type(action) is int
-        assert 0 <= action < 4
+        assert 0 <= action < N_ACTIONS
 
 
 def test_act_with_zero_epsilon_is_greedy():
     agent = make_agent()
-    obs = np.random.default_rng(42).standard_normal(8).astype(np.float32)
+    rng = np.random.default_rng(42)
 
-    with torch.no_grad():
-        q_values = agent.q(torch.as_tensor(obs))
-        expected = q_values.argmax().item()
+    for _ in range(20):
+        obs = rng.standard_normal(OBS_DIM).astype(np.float32)
+        with torch.no_grad():
+            expected = agent.q(torch.as_tensor(obs)).argmax().item()
+        assert agent.act(obs, 0.0) == expected
 
-    assert agent.act(obs, 0.0) == expected
+
+def test_act_with_epsilon_one_is_exploratory():
+    agent = make_agent()
+    obs = np.zeros(OBS_DIM, dtype=np.float32)
+
+    actions = {agent.act(obs, 1.0) for _ in range(200)}
+    assert actions == set(range(N_ACTIONS))
