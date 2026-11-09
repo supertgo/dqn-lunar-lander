@@ -38,6 +38,7 @@ torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platf
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 
 [tool.ruff]
 line-length = 100
