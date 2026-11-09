@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install swig (build do Box2D, se não houver wheel)
+        run: sudo apt-get update && sudo apt-get install -y swig
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        # Com uv.lock no repositório, instala exatamente o que está travado.
+        run: |
+          if [ -f uv.lock ]; then uv sync --locked; else uv sync; fi
+
+      - name: Run tests
+        run: uv run pytest -v
