@@ -11,13 +11,7 @@ import torch.nn.functional as F
 from dqn.config import Hyperparameters
 from dqn.network import QNetwork
 from dqn.replay_buffer import Batch, ReplayBuffer
-
-
-def _epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generator) -> int:
-    # Trocar por `from dqn.exploration import epsilon_greedy`
-    if rng.random() < epsilon:
-        return int(rng.integers(len(q_values)))
-    return int(np.argmax(q_values))
+from dqn.exploration import epsilon_greedy
 
 
 class DQNAgent:
@@ -45,7 +39,7 @@ class DQNAgent:
         with torch.no_grad():
             q_values = self.q(obs_t).numpy()
 
-        return _epsilon_greedy(q_values, epsilon, self.rng)
+        return epsilon_greedy(q_values, epsilon, self.rng)
 
     def store(
         self,
