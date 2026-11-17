@@ -1,9 +1,8 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from collections import deque
 from typing import NamedTuple
+
 import numpy as np
 
 
@@ -29,11 +28,22 @@ class ReplayBuffer:
         self,
         capacity: int,
         obs_size: int,
-        rng: np.random.Generator
-    ):
-        self.buffer = deque(maxlen=capacity)
+        rng: np.random.Generator,
+    ) -> None:
+        if isinstance(capacity, bool) or not isinstance(capacity, (int, np.integer)):
+            raise TypeError("capacity deve ser um inteiro.")
+        if capacity <= 0:
+            raise ValueError("capacity deve ser maior que zero.")
+        if isinstance(obs_size, bool) or not isinstance(obs_size, (int, np.integer)):
+            raise TypeError("obs_size deve ser um inteiro.")
+        if obs_size <= 0:
+            raise ValueError("obs_size deve ser maior que zero.")
+
+        self.capacity = int(capacity)
         self.obs_size = obs_size
         self.rng = rng
+        self.buffer: list[Transition] = []
+        self._next_idx = 0
 
     def add(
         self,
@@ -43,31 +53,26 @@ class ReplayBuffer:
         next_obs: np.ndarray,
         done: bool,
     ) -> None:
-
         if obs.shape != (self.obs_size,) or next_obs.shape != (self.obs_size,):
             raise ValueError("Dimensão dos vetores de estado diferente do esperado.")
 
-        transition = Transition(
-            obs.copy(),
-            action,
-            reward,
-            next_obs.copy(),
-            done
-        )
+        transition = Transition(obs.copy(), action, reward, next_obs.copy(), done)
 
-        self.buffer.append(transition)
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(transition)
+        else:
+            self.buffer[self._next_idx] = transition
+        self._next_idx = (self._next_idx + 1) % self.capacity
 
     def sample(self, batch_size: int) -> Batch:
         """Amostragem uniforme sem reposição."""
 
+        if isinstance(batch_size, bool) or not isinstance(batch_size, (int, np.integer)):
+            raise TypeError("batch_size deve ser um inteiro.")
         if batch_size <= 0 or batch_size > len(self):
             raise ValueError("Batch size inválido.")
 
-        ids = self.rng.choice(
-            len(self),
-            size=batch_size,
-            replace=False
-        )
+        ids = self.rng.choice(len(self), size=batch_size, replace=False)
 
         batch = [self.buffer[i] for i in ids]
 
