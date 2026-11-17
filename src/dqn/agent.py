@@ -20,31 +20,6 @@ def _epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generat
     return int(np.argmax(q_values))
 
 
-class _ListReplayBuffer:
-    # TODO(integração): trocar por `from dqn.replay_buffer import ReplayBuffer`
-    def __init__(self, capacity: int, obs_dim: int, rng: np.random.Generator) -> None:
-        self.memory = deque(maxlen=capacity)
-        self.rng = rng
-
-    def add(self, obs, action, reward, next_obs, terminated) -> None:
-        self.memory.append((obs, action, reward, next_obs, terminated))
-
-    def sample(self, batch_size: int) -> Batch:
-        idx = self.rng.integers(len(self.memory), size=batch_size)
-        transitions = [self.memory[i] for i in idx]
-
-        return Batch(
-            obs=np.array([t[0] for t in transitions], dtype=np.float32),
-            actions=np.array([t[1] for t in transitions], dtype=np.int64),
-            rewards=np.array([t[2] for t in transitions], dtype=np.float32),
-            next_obs=np.array([t[3] for t in transitions], dtype=np.float32),
-            dones=np.array([t[4] for t in transitions], dtype=np.float32),
-        )
-
-    def __len__(self) -> int:
-        return len(self.memory)
-
-
 class DQNAgent:
     def __init__(
         self,
