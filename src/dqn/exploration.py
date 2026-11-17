@@ -25,6 +25,6 @@ class LinearEpsilon:
 
 def epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generator) -> int:
     """Com prob. ε, ação uniforme em range(len(q_values)); senão argmax(q_values)."""
-    if self.rng.random() < epsilon:
+    if rng.random() < epsilon:
         return int(rng.integers(len(q_values)))
     return int(np.argmax(q_values))
