@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from dqn.config import Hyperparameters
 from dqn.network import QNetwork
-from dqn.replay_buffer import Batch
+from dqn.replay_buffer import Batch, ReplayBuffer
 
 
 def _epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generator) -> int:
@@ -62,7 +62,7 @@ class DQNAgent:
         self.q = QNetwork(obs_dim, n_actions, hp.hidden_sizes)
         self.q_target = copy.deepcopy(self.q)
         self.optimizer = torch.optim.Adam(self.q.parameters(), lr=hp.learning_rate)
-        self.buffer = _ListReplayBuffer(hp.buffer_size, obs_dim, rng)
+        self.buffer = ReplayBuffer(hp.buffer_size, obs_dim, rng)
 
     def act(self, obs: np.ndarray, epsilon: float) -> int:
         obs_t = torch.as_tensor(obs, dtype=torch.float32)
