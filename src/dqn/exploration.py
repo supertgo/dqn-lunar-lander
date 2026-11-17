@@ -14,6 +14,9 @@ class LinearEpsilon:
         self.decay_steps = decay_steps
 
     def __call__(self, step: int) -> float:
+        if step < 0:
+            raise ValueError("Step deve ser maior ou igual a zero.")
+
         if step >= self.decay_steps:
             return float(self.end)
         
