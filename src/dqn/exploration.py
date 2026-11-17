@@ -9,6 +9,13 @@ class LinearEpsilon:
     """ε(step): cai linearmente de `start` a `end` em `decay_steps` passos e fica em `end`."""
 
     def __init__(self, start: float, end: float, decay_steps: int):
+        if not isinstance(decay_steps, (int, np.integer)) or isinstance(
+            decay_steps, (bool, np.bool_)
+        ):
+            raise TypeError("decay_steps deve ser um inteiro.")
+        if decay_steps <= 0:
+            raise ValueError("decay_steps deve ser positivo.")
+
         self.start = start
         self.end = end
         self.decay_steps = decay_steps
@@ -28,6 +35,11 @@ class LinearEpsilon:
 
 def epsilon_greedy(q_values: np.ndarray, epsilon: float, rng: np.random.Generator) -> int:
     """Com prob. ε, ação uniforme em range(len(q_values)); senão argmax(q_values)."""
+    if not 0.0 <= epsilon <= 1.0:
+        raise ValueError("Epsilon deve estar entre 0 e 1.")
+    if q_values.ndim != 1 or q_values.size == 0:
+        raise ValueError("q_values deve ser um vetor não vazio.")
+
     if rng.random() < epsilon:
-        return int(rng.integers(len(q_values)))
+        return int(rng.integers(q_values.size))
     return int(np.argmax(q_values))
