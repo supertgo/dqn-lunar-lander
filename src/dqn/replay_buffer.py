@@ -9,11 +9,11 @@ import numpy as np
 
 @dataclass
 class Batch:
-    obs: np.ndarray       # (B, obs_dim) float32
-    actions: np.ndarray   # (B,) int64
-    rewards: np.ndarray   # (B,) float32
-    next_obs: np.ndarray # (B, obs_dim) float32
-    dones: np.ndarray     # (B,) float32
+    obs: np.ndarray
+    actions: np.ndarray
+    rewards: np.ndarray
+    next_obs: np.ndarray
+    dones: np.ndarray
 
 
 class Transition(NamedTuple):
@@ -25,8 +25,14 @@ class Transition(NamedTuple):
 
 
 class ReplayBuffer:
-    def __init__(self, capacity: int, rng: np.random.Generator):
+    def __init__(
+        self,
+        capacity: int,
+        obs_size: int,
+        rng: np.random.Generator
+    ):
         self.buffer = deque(maxlen=capacity)
+        self.obs_size = obs_size
         self.rng = rng
 
     def add(
@@ -37,6 +43,10 @@ class ReplayBuffer:
         next_obs: np.ndarray,
         done: bool,
     ) -> None:
+
+        if obs.shape != (self.obs_size,) or next_obs.shape != (self.obs_size,):
+            raise ValueError("Dimensão dos vetores de estado diferente do esperado.")
+
         transition = Transition(
             obs.copy(),
             action,
@@ -44,13 +54,14 @@ class ReplayBuffer:
             next_obs.copy(),
             done
         )
+
         self.buffer.append(transition)
 
     def sample(self, batch_size: int) -> Batch:
         """Amostragem uniforme sem reposição."""
 
-        if batch_size > len(self):
-            raise ValueError("Batch size maior que o Replay Buffer.")
+        if batch_size <= 0 or batch_size > len(self):
+            raise ValueError("Batch size inválido.")
 
         ids = self.rng.choice(
             len(self),
