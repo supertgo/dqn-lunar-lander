@@ -186,7 +186,7 @@ def test_update_returns_finite_python_float():
 
 
 def test_update_on_terminal_transition_converges_to_reward():
-    agent = make_agent(learning_rate=1e-2, gamma=0.99)
+    agent = make_agent(learning_rate=1e-2, gamma=0.99, batch_size=1)
     obs, action, reward, next_obs, _ = make_transition(np.random.default_rng(0))
     agent.store(obs, action, reward, next_obs, True)
 
@@ -220,7 +220,7 @@ def test_update_does_not_change_target_network():
 
 def test_update_on_non_terminal_transition_converges_to_bellman_target():
     gamma = 0.99
-    agent = make_agent(learning_rate=1e-2, gamma=gamma)
+    agent = make_agent(learning_rate=1e-2, gamma=gamma, batch_size=1)
     obs, action, reward, next_obs, _ = make_transition(np.random.default_rng(0))
     agent.store(obs, action, reward, next_obs, False)
 
