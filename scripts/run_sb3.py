@@ -87,3 +87,31 @@ def train_sb3(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
             return logger.finish(final_eval)
     finally:
         env.close()
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Executa o baseline DQN do Stable Baselines3 (configuração padrão).")
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2],
+        help="Lista de seeds para execução (padrão: 0 1 2).",
+    )
+    parser.add_argument(
+        "--total-timesteps",
+        type=int,
+        default=None,
+        help="Total de passos de treino (padrão: total_timesteps de configs/hyperparameters.yaml).",
+    )
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=RESULTS_DIR,
+        help="Diretório de saída das runs (padrão: results/runs).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Reexecuta mesmo se summary.json já existir.",
+    )
+    return parser.parse_args()
