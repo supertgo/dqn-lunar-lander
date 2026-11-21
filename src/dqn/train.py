@@ -39,7 +39,32 @@ def train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
             ep_length = 0
             ep_losses: list[float] = []
 
-            
+            for step in range(1, hp.total_timesteps + 1):
+                epsilon = epsilon_schedule(step - 1)
+                action = agent.act(obs, epsilon)
+                next_obs, reward, terminated, truncated, _ = env.step(action)
+                next_obs = np.asarray(next_obs, dtype=np.float32)
+
+                agent.store(obs, action, float(reward), next_obs, bool(terminated))
+
+                ep_return += float(reward)
+                ep_length += 1
+
+                if (
+                    step >= hp.learning_starts
+                    and step % hp.train_freq == 0
+                    and len(agent.buffer) >= hp.batch_size
+                ):
+                    ep_losses.append(agent.update())
+
+                if step % hp.target_update_interval == 0:
+                    agent.sync_target()
+
+                
+            agent.save(logger.dir / "model.pt")
+            final_eval = evaluate(greedy_policy, eval_cfg, eval_cfg.final_eval_episodes)
+            return logger.finish(final_eval)
+
     finally:
         env.close()
 
