@@ -33,3 +33,25 @@ class FakeEnv:
 
     def close(self) -> None:
         self.closed = True
+        
+def _make_eval_config(**overrides) -> EvalConfig:
+    defaults = {
+        "env_id": "FakeEnv-v0",
+        "eval_freq": 1000,
+        "eval_episodes": 2,
+        "final_eval_episodes": 5,
+        "eval_seed": 100,
+        "solved_threshold": 200.0,
+    }
+    defaults.update(overrides)
+    return EvalConfig(**defaults)
+
+
+@pytest.mark.parametrize("invalid_episodes", [0, -1, -10])
+def test_evaluate_raises_value_error_for_non_positive_episodes(invalid_episodes: int) -> None:
+    cfg = _make_eval_config()
+
+    with pytest.raises(ValueError, match="positivo"):
+        evaluate(policy=lambda obs: 0, cfg=cfg, n_episodes=invalid_episodes)
+
+
