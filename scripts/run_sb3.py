@@ -63,3 +63,27 @@ class _SB3LoggingCallback(BaseCallback):
             )
 
         return True
+        
+def train_sb3(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
+    if cfg.algo != "sb3":
+        raise ValueError(f"Esperado algo='sb3', recebido: {cfg.algo!r}")
+
+    total_timesteps = int(cfg.hyperparameters["total_timesteps"])
+    eval_cfg = cfg.evaluation
+
+    env = gym.make(eval_cfg.env_id)
+    try:
+        model = DQN("MlpPolicy", env, seed=cfg.seed, verbose=0)
+
+        def greedy_policy(obs: np.ndarray) -> int:
+            action, _ = model.predict(obs, deterministic=True)
+            return int(action)
+
+        with RunLogger(cfg, results_dir) as logger:
+            callback = _SB3LoggingCallback(logger, eval_cfg, greedy_policy)
+            model.learn(total_timesteps=total_timesteps, callback=callback)
+            model.save(logger.dir / "model.zip")
+            final_eval = evaluate(greedy_policy, eval_cfg, eval_cfg.final_eval_episodes)
+            return logger.finish(final_eval)
+    finally:
+        env.close()
