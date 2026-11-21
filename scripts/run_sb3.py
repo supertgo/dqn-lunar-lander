@@ -30,5 +30,36 @@ class _SB3LoggingCallback(BaseCallback):
         self.ep_return = 0.0
         self.ep_length = 0
 
-    
+    def _on_step(self) -> bool:
+        reward = float(self.locals["rewards"][0])
+        done = bool(self.locals["dones"][0])
 
+        self.ep_return += reward
+        self.ep_length += 1
+
+        if done:
+            self.episode += 1
+            epsilon = float(getattr(self.model, "exploration_rate", float("nan")))
+            loss = float(self.model.logger.name_to_value.get("train/loss", float("nan")))
+            self.run_logger.log_episode(
+                step=self.num_timesteps,
+                episode=self.episode,
+                **{"return": self.ep_return},
+                length=self.ep_length,
+                epsilon=epsilon,
+                loss=loss,
+            )
+            self.ep_return = 0.0
+            self.ep_length = 0
+
+        if self.eval_cfg.eval_freq > 0 and self.num_timesteps % self.eval_cfg.eval_freq == 0:
+            eval_res = evaluate(self.policy_fn, self.eval_cfg, self.eval_cfg.eval_episodes)
+            self.run_logger.log_eval(
+                step=self.num_timesteps,
+                mean_return=eval_res["mean_return"],
+                std_return=eval_res["std_return"],
+                success_rate=eval_res["success_rate"],
+                mean_length=eval_res["mean_length"],
+            )
+
+        return True
