@@ -115,3 +115,36 @@ def _parse_args() -> argparse.Namespace:
         help="Reexecuta mesmo se summary.json já existir.",
     )
     return parser.parse_args()
+    
+def main() -> None:
+    args = _parse_args()
+    total_timesteps = (
+        args.total_timesteps
+        if args.total_timesteps is not None
+        else load_hyperparameters().total_timesteps
+    )
+    eval_cfg = load_evaluation()
+
+    for seed in args.seeds:
+        cfg = RunConfig(
+            algo="sb3",
+            hyperparameters={"total_timesteps": int(total_timesteps)},
+            evaluation=eval_cfg,
+            seed=int(seed),
+        )
+        out_dir = run_dir(cfg, args.results_dir)
+        if not args.force and is_complete(out_dir):
+            print(f"[skip] {cfg.run_id} já concluída.")
+            continue
+
+        print(f"[run]  {cfg.run_id} (total_timesteps={total_timesteps})...")
+        summary = train_sb3(cfg, args.results_dir)
+        print(
+            f"[done] {cfg.run_id} | mean_return={summary['mean_return']:.2f} "
+            f"| success_rate={summary['success_rate']:.2%} "
+            f"| wall_time={summary['wall_time_s']:.1f}s"
+        )
+
+
+if __name__ == "__main__":
+    main()
