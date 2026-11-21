@@ -55,3 +55,28 @@ def test_evaluate_raises_value_error_for_non_positive_episodes(invalid_episodes:
         evaluate(policy=lambda obs: 0, cfg=cfg, n_episodes=invalid_episodes)
 
 
+def test_evaluate_computes_exact_metrics_and_threshold_boundary(monkeypatch: pytest.MonkeyPatch,) -> None:
+    # Episódio 0: retorno = 200.0 (exatamente no threshold -> sucesso), tamanho = 2
+    # Episódio 1: retorno = 100.0 (abaixo do threshold -> falha), tamanho = 1
+    # Episódio 2: retorno = 300.0 (acima do threshold -> sucesso), tamanho = 3
+    fake_env = FakeEnv(
+        episodes=[
+            [(120.0, False, False), (80.0, True, False)],
+            [(100.0, True, False)],
+            [(100.0, False, False), (100.0, False, False), (100.0, True, False)],
+        ]
+    )
+    monkeypatch.setattr("dqn.evaluate.gym.make", lambda env_id: fake_env)
+    cfg = _make_eval_config(solved_threshold=200.0)
+
+    result = evaluate(policy=lambda obs: 1, cfg=cfg, n_episodes=3)
+
+    expected_std = float(np.std([200.0, 100.0, 300.0]))
+    assert result["mean_return"] == pytest.approx(200.0)
+    assert result["std_return"] == pytest.approx(expected_std)
+    assert result["success_rate"] == pytest.approx(2.0 / 3.0)
+    assert result["mean_length"] == pytest.approx(2.0)
+    assert result["n_episodes"] == 3
+    assert fake_env.closed is True
+
+
