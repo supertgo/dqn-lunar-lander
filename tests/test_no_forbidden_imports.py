@@ -91,12 +91,13 @@ def test_src_dqn_file_has_no_forbidden_rl_imports(py_file: Path) -> None:
         ("from stable_baselines3 import DQN\n", "stable_baselines3"),
         ("from ray.rllib.algorithms.dqn import DQN\n", "ray.rllib.algorithms.dqn"),
         ("from rl.agents.dqn import DQNAgent\n", "rl.agents.dqn"),
-        ("from scripts import run_sb3\n", "scripts"),  # ignorado se não houver run_sb3 no module
         ("from scripts import run_sb3\n", "scripts.run_sb3"),
+        ("import scripts.run_sb3\n", "scripts.run_sb3"),
         ('import importlib\nimportlib.import_module("stable_baselines3")\n', "stable_baselines3"),
         ('__import__("stable_baselines3")\n', "stable_baselines3"),
     ],
 )
+
 def test_forbidden_import_detector_catches_violations(tmp_path: Path, code: str, expected_module: str) -> None:
     sample_file = tmp_path / "sample.py"
     sample_file.write_text(code, encoding="utf-8")
