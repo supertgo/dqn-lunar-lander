@@ -43,9 +43,15 @@ def _find_forbidden_imports(file_path: Path) -> list[tuple[int, str]]:
             for alias in node.names:
                 if _is_forbidden_module(alias.name):
                     violations.append((node.lineno, alias.name))
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            if _is_forbidden_module(node.module):
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and _is_forbidden_module(node.module):
                 violations.append((node.lineno, node.module))
+            else:
+                for alias in node.names:
+                    full_name = f"{node.module}.{alias.name}" if node.module else alias.name
+                    if _is_forbidden_module(full_name):
+                        violations.append((node.lineno, full_name))
+
         elif isinstance(node, ast.Call) and node.args:
             first_arg = node.args[0]
             if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
@@ -86,7 +92,7 @@ def test_src_dqn_file_has_no_forbidden_rl_imports(py_file: Path) -> None:
         ("from ray.rllib.algorithms.dqn import DQN\n", "ray.rllib.algorithms.dqn"),
         ("from rl.agents.dqn import DQNAgent\n", "rl.agents.dqn"),
         ("from scripts import run_sb3\n", "scripts"),  # ignorado se não houver run_sb3 no module
-        ("import scripts.run_sb3\n", "scripts.run_sb3"),
+        ("from scripts import run_sb3\n", "scripts.run_sb3"),
         ('import importlib\nimportlib.import_module("stable_baselines3")\n', "stable_baselines3"),
         ('__import__("stable_baselines3")\n', "stable_baselines3"),
     ],
