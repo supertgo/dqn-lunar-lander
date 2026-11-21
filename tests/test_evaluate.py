@@ -80,3 +80,32 @@ def test_evaluate_computes_exact_metrics_and_threshold_boundary(monkeypatch: pyt
     assert fake_env.closed is True
 
 
+def test_evaluate_stops_episode_on_truncation(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_env = FakeEnv(
+        episodes=[
+            [(10.0, False, False), (15.0, False, True), (999.0, True, False)],
+        ]
+    )
+    monkeypatch.setattr("dqn.evaluate.gym.make", lambda env_id: fake_env)
+    cfg = _make_eval_config()
+
+    result = evaluate(policy=lambda obs: 0, cfg=cfg, n_episodes=1)
+
+    assert result["mean_return"] == pytest.approx(25.0)
+    assert result["mean_length"] == pytest.approx(2.0)
+
+
+def test_evaluate_uses_sequential_deterministic_seeds(monkeypatch: pytest.MonkeyPatch,) -> None:
+    fake_env = FakeEnv(
+        episodes=[
+            [(1.0, True, False)],
+            [(2.0, True, False)],
+            [(3.0, True, False)],
+        ]
+    )
+    monkeypatch.setattr("dqn.evaluate.gym.make", lambda env_id: fake_env)
+    cfg = _make_eval_config(eval_seed=42)
+
+    evaluate(policy=lambda obs: 0, cfg=cfg, n_episodes=3)
+
+    assert fake_env.reset_seeds == [42, 43, 44]
