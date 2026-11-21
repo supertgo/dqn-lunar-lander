@@ -21,4 +21,14 @@ from dqn.run_logger import RunLogger, is_complete, run_dir
 
 
 class _SB3LoggingCallback(BaseCallback):
+    def __init__(self, run_logger: RunLogger, eval_cfg: EvalConfig, policy_fn: PolicyFn,) -> None:
+        super().__init__()
+        self.run_logger = run_logger
+        self.eval_cfg = eval_cfg
+        self.policy_fn = policy_fn
+        self.episode = 0
+        self.ep_return = 0.0
+        self.ep_length = 0
+
     
+
