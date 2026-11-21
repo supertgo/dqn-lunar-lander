@@ -104,6 +104,39 @@ def test_evaluate_stops_episode_on_truncation(monkeypatch: pytest.MonkeyPatch) -
     assert result["mean_return"] == pytest.approx(25.0)
     assert result["mean_length"] == pytest.approx(2.0)
 
+def test_evaluate_creates_environment_from_config_env_id(monkeypatch: pytest.MonkeyPatch,) -> None:
+    fake_env = FakeEnv(episodes=[[(1.0, True, False)]])
+    requested_env_ids: list[str] = []
+
+    def fake_make(env_id: str) -> FakeEnv:
+        requested_env_ids.append(env_id)
+        return fake_env
+
+    monkeypatch.setattr("dqn.evaluate.gym.make", fake_make)
+    cfg = _make_eval_config(env_id="CustomLunarLander-v3")
+
+    evaluate(policy=lambda obs: 0, cfg=cfg, n_episodes=1)
+
+    assert requested_env_ids == ["CustomLunarLander-v3"]
+
+def test_evaluate_converts_observations_and_actions(monkeypatch: pytest.MonkeyPatch,) -> None:
+    fake_env = FakeEnv(
+        episodes=[[(1.0, False, False), (2.0, True, False)]],
+        return_list_obs=True,
+    )
+    monkeypatch.setattr("dqn.evaluate.gym.make", lambda env_id: fake_env)
+    cfg = _make_eval_config()
+    observed_types: list[type] = []
+
+    def numpy_action_policy(obs: np.ndarray) -> int:
+        observed_types.append(type(obs))
+        return np.int64(2)  # type: ignore[return-value]
+
+    evaluate(policy=numpy_action_policy, cfg=cfg, n_episodes=1)
+
+    assert observed_types == [np.ndarray, np.ndarray]
+    assert fake_env.received_actions == [2, 2]
+    assert all(type(action) is int for action in fake_env.received_actions)
 
 def test_evaluate_uses_sequential_deterministic_seeds(monkeypatch: pytest.MonkeyPatch,) -> None:
     fake_env = FakeEnv(
