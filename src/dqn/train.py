@@ -60,7 +60,35 @@ def train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
                 if step % hp.target_update_interval == 0:
                     agent.sync_target()
 
-                
+                if terminated or truncated:
+                    episode += 1
+                    mean_loss = float(np.mean(ep_losses)) if ep_losses else float("nan")
+                    logger.log_episode(
+                        step=step,
+                        episode=episode,
+                        **{"return": ep_return},
+                        length=ep_length,
+                        epsilon=epsilon,
+                        loss=mean_loss,
+                    )
+                    obs, _ = env.reset()
+                    obs = np.asarray(obs, dtype=np.float32)
+                    ep_return = 0.0
+                    ep_length = 0
+                    ep_losses.clear()
+                else:
+                    obs = next_obs
+
+                if eval_cfg.eval_freq > 0 and step % eval_cfg.eval_freq == 0:
+                    eval_res = evaluate(greedy_policy, eval_cfg, eval_cfg.eval_episodes)
+                    logger.log_eval(
+                        step=step,
+                        mean_return=eval_res["mean_return"],
+                        std_return=eval_res["std_return"],
+                        success_rate=eval_res["success_rate"],
+                        mean_length=eval_res["mean_length"],
+                    )
+
             agent.save(logger.dir / "model.pt")
             final_eval = evaluate(greedy_policy, eval_cfg, eval_cfg.final_eval_episodes)
             return logger.finish(final_eval)
