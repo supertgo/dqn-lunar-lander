@@ -18,6 +18,10 @@ class FakeEnv:
         self.received_actions: list[int] = []
         self.closed = False
 
+    def _format_obs(self, ep: int, step: int):
+        values = [float(ep), float(step)]
+        return values if self._return_list_obs else np.array(values, dtype=np.float32)
+
     def reset(self, *, seed: int | None = None):
         self.reset_seeds.append(seed)
         self._ep_idx += 1
