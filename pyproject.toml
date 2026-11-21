@@ -39,6 +39,10 @@ torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platf
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests", "scripts"]
+markers = [
+    "slow: testes mais lentos que usam o ambiente real do Gymnasium",
+]
+
 
 [tool.ruff]
 line-length = 100
@@ -48,8 +52,3 @@ target-version = "py311"
 venvPath = "."
 venv = ".venv"
 extraPaths = ["tests", "scripts"]
-
-[tool.pytest.ini_options]
-markers = [
-    "slow: testes mais lentos que usam o ambiente real do Gymnasium",
-]
