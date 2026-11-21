@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import gymnasium as gym
 import numpy as np
 import pytest
 
@@ -10,8 +9,9 @@ from dqn.evaluate import evaluate
 class FakeEnv:
     """Ambiente determinístico para testar o contrato de evaluate()."""
 
-    def __init__(self, episodes: list[list[tuple[float, bool, bool]]]) -> None:
+    def __init__(self, episodes: list[list[tuple[float, bool, bool]]], *, return_list_obs: bool = False,) -> None:
         self._episodes = episodes
+        self._return_list_obs = return_list_obs
         self._ep_idx = -1
         self._step_idx = 0
         self.reset_seeds: list[int | None] = []
