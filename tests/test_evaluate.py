@@ -109,3 +109,28 @@ def test_evaluate_uses_sequential_deterministic_seeds(monkeypatch: pytest.Monkey
     evaluate(policy=lambda obs: 0, cfg=cfg, n_episodes=3)
 
     assert fake_env.reset_seeds == [42, 43, 44]
+
+def test_evaluate_closes_environment_even_when_policy_fails(monkeypatch: pytest.MonkeyPatch,) -> None:
+    fake_env = FakeEnv(episodes=[[(1.0, True, False)]])
+    monkeypatch.setattr("dqn.evaluate.gym.make", lambda env_id: fake_env)
+    cfg = _make_eval_config()
+
+    def broken_policy(obs: np.ndarray) -> int:
+        raise RuntimeError("falha simulada na política")
+
+    with pytest.raises(RuntimeError, match="falha simulada"):
+        evaluate(policy=broken_policy, cfg=cfg, n_episodes=1)
+
+    assert fake_env.closed is True
+
+
+def test_evaluate_is_deterministic_on_real_lunar_lander_env() -> None:
+    cfg = _make_eval_config(env_id="LunarLander-v3", eval_seed=123)
+    constant_policy = lambda obs: 0
+
+    first_run = evaluate(policy=constant_policy, cfg=cfg, n_episodes=2)
+    second_run = evaluate(policy=constant_policy, cfg=cfg, n_episodes=2)
+
+    assert first_run == second_run
+    assert first_run["n_episodes"] == 2
+    assert first_run["mean_length"] > 0
