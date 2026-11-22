@@ -3,25 +3,25 @@
 # Ao fim da busca, atualize este arquivo com a melhor combinação encontrada.
 
 # Otimização
-learning_rate:
-gamma:                    # fator de desconto
-batch_size:
+learning_rate: 0.0005
+gamma: 0.99  # fator de desconto
+batch_size: 128
 
 # Replay buffer
-buffer_size:
-learning_starts:          # passos aleatórios antes de começar a treinar
+buffer_size: 100000
+learning_starts: 5000  # passos aleatórios antes de começar a treinar
 
 # Rede alvo
-target_update_interval:   # passos de ambiente entre cópias online -> alvo
+target_update_interval: 1000  # passos de ambiente entre cópias online -> alvo
 
 # Exploração ε-greedy
-epsilon_start:
-epsilon_end:
-epsilon_decay_steps:
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay_steps: 50000
 
 # Treino
-total_timesteps:
-train_freq:               # 1 atualização de gradiente a cada N passos
+total_timesteps: 300000
+train_freq: 4  # 1 atualização de gradiente a cada N passos
 
 # Arquitetura da rede Q
-hidden_sizes:
+hidden_sizes: [256, 256]

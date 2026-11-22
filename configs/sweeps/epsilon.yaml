@@ -1,7 +1,16 @@
 # Cada variant sobrescreve configs/hyperparameters.yaml e roda com todas as seeds.
 name: epsilon
-seeds:
+seeds: [0, 1, 2]
 variants:
-  - epsilon_start:
-    epsilon_end:
-    epsilon_decay_steps:
+  - epsilon_start: 1.0
+    epsilon_end: 0.05
+    epsilon_decay_steps: 10000
+  - epsilon_start: 1.0
+    epsilon_end: 0.05
+    epsilon_decay_steps: 50000
+  - epsilon_start: 1.0
+    epsilon_end: 0.05
+    epsilon_decay_steps: 150000
+  - epsilon_start: 1.0
+    epsilon_end: 0.01
+    epsilon_decay_steps: 50000

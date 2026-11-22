@@ -1,9 +1,9 @@
 # Protocolo de avaliação — FIXO para todos os experimentos (DQN e SB3).
 # Mudar qualquer valor aqui muda o run_id de todas as runs: só mexa antes da busca começar.
 
-env_id:
-eval_freq:            # avaliar a política gulosa a cada N passos de treino
-eval_episodes:        # episódios por avaliação periódica
-final_eval_episodes:  # episódios da avaliação final
-eval_seed:            # episódio i da avaliação usa reset(seed=eval_seed + i)
-solved_threshold:     # retorno considerado "pouso resolvido"
+env_id: LunarLander-v3
+eval_freq: 10000          # avaliar a política gulosa a cada N passos de treino
+eval_episodes: 10         # episódios por avaliação periódica
+final_eval_episodes: 100  # episódios da avaliação final
+eval_seed: 10000          # episódio i da avaliação usa reset(seed=eval_seed + i)
+solved_threshold: 200     # retorno considerado "pouso resolvido"
