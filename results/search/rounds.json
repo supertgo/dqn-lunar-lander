@@ -40,6 +40,17 @@
       "configs/sweeps/rounds/round_02_explore.yaml"
     ],
     "rationale": "Como a variância entre seeds decidiu a rodada 1, a exploração passa a usar 5 seeds. As cinco líderes que só tinham 3 seeds (batch 64 + train_freq 2, buffer 10k, ε em 10k, lr 1e-3, buffer 300k) recebem as seeds 3 e 4. A exploração combina a nova líder (batch 64 + train_freq 2) com os vizinhos que também lideraram: buffer 10k, ε em 10k, rede 512×512, alvo a cada 2000 passos e lr 3e-4, este último para testar se um passo menor reduz a variância. Também testa as mesmas combinações sem train_freq 2 e a combinação de todas as líderes.",
+    "conclusion": "Nova líder com ganho grande: batch 64 + train_freq 2 + rede 512×512 fez 241 ± 11 com 5 seeds (score 230, contra 187 da líder anterior). Em segundo, batch 64 + train_freq 2 + buffer 10k + ε em 10k (232 ± 18, score 214), e em terceiro batch 64 + train_freq 2 + alvo a cada 2000 passos (227 ± 27). A confirmação derrubou batch 64 + train_freq 2 sozinha para 204 ± 41 com 5 seeds, então o ganho vem da combinação com a rede maior ou com buffer e ε menores, e não do train_freq isolado. lr 3e-4 aumentou a variância (± 87) em vez de reduzir. Buffer 10k é o eixo isolado mais estável (207 ± 15).",
+    "status": "done"
+  },
+  {
+    "round": 3,
+    "title": "Refinar a rede 512×512 e testar a robustez das líderes",
+    "sweeps": [
+      "configs/sweeps/rounds/round_03_confirm.yaml",
+      "configs/sweeps/rounds/round_03_explore.yaml"
+    ],
+    "rationale": "As duas líderes recebem 5 seeds novas (5 a 9) e passam a ter 10, para saber se o desvio baixo se sustenta. A exploração combina a líder (batch 64 + train_freq 2 + 512×512) com o que funcionou nas outras combinações: alvo a cada 2000 passos, buffer 10k, ε em 10k e os dois juntos. Também testa lr 3e-4 na rede maior, train_freq 1 (o dobro de atualizações), e remove um ingrediente por vez (sem batch 64, sem train_freq 2) para saber qual deles a rede maior precisa. Por fim, testa uma rede mais profunda de mesma ordem de tamanho (256×256×256).",
     "conclusion": null,
     "status": "running"
   }
