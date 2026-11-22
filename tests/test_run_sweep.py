@@ -65,6 +65,58 @@ def test_run_sweep_uses_dqn_train_function():
     assert run_sweep.train is train
 
 
+def test_train_writes_run_files(tmp_path: Path):
+    from dqn.config import EvalConfig, RunConfig
+
+    cfg = RunConfig(
+        algo="dqn",
+        hyperparameters={
+            "learning_rate": 1e-3,
+            "gamma": 0.99,
+            "batch_size": 4,
+            "buffer_size": 100,
+            "learning_starts": 20,
+            "target_update_interval": 10,
+            "total_timesteps": 20,
+            "epsilon_start": 1.0,
+            "epsilon_end": 0.05,
+            "epsilon_decay_steps": 10,
+            "train_freq": 1,
+            "hidden_sizes": [64, 64],
+        },
+        evaluation=EvalConfig(
+            env_id="LunarLander-v3",
+            eval_freq=5,
+            eval_episodes=2,
+            final_eval_episodes=3,
+            eval_seed=1,
+            solved_threshold=200.0,
+        ),
+        seed=7,
+    )
+
+    summary = run_sweep._train(cfg, tmp_path)
+    run_dir = tmp_path / cfg.run_id
+
+    assert set(summary) == {
+        "mean_return",
+        "std_return",
+        "success_rate",
+        "mean_length",
+        "n_episodes",
+        "wall_time_s",
+    }
+    assert {
+        "config.json",
+        "meta.json",
+        "train.csv",
+        "eval.csv",
+        "summary.json",
+        "model.pt",
+    } <= {path.name for path in run_dir.iterdir()}
+    assert (run_dir / "summary.json").is_file()
+
+
 def test_run_sweep_rejects_non_positive_workers(tmp_path: Path):
     sweep = SimpleNamespace(name="test", results_dir=tmp_path, run_configs=list)
 
