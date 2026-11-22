@@ -222,6 +222,7 @@ __marimo__/
 # --- projeto ---
 # Pesos de modelos ficam fora do git (compartilhar o melhor via Drive/Release)
 *.pt
+results/runs/*/model.zip
 # Derivados de results/runs/ — regenerados por scripts/aggregate.py
 results/aggregated/
 # Build do LaTeX
