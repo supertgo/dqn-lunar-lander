@@ -73,6 +73,17 @@
    "configs/sweeps/rounds/round_05_explore.yaml"
   ],
   "rationale": "Batch 256 e buffer 300k recebem as seeds 5 a 9. A exploração testa se o ganho do lote grande continua: batch 256 + buffer 300k, batch 512, e batch 256 com lr 1e-3 (lotes maiores costumam aceitar passos maiores). São 25 runs, uma por worker, para a rodada caber em cerca de 70 minutos e deixar tempo para a rodada final antes das 19:00.",
+  "conclusion": "A líder se manteve: com 10 seeds, batch 256 + train_freq 2 + 512×512 fez 244.5 ± 23.2 (score 221). Foi a primeira líder que não regrediu ao ganhar mais seeds, e a segunda melhor com 10 seeds fica 24 pontos de score atrás. Buffer 300k regrediu para 224 ± 34 (score 190). Combinar batch 256 com buffer 300k piorou (182 ± 45), assim como batch 512 (177 ± 64) e batch 256 com lr 1e-3 (204 ± 45): o lote de 256 parece ser o ponto ótimo.",
+  "status": "done"
+ },
+ {
+  "round": 6,
+  "title": "Avaliação final e última exploração",
+  "sweeps": [
+   "configs/sweeps/rounds/round_06_final.yaml",
+   "configs/sweeps/rounds/round_06_explore.yaml"
+  ],
+  "rationale": "A vencedora roda com 10 seeds novas (10 a 19), que não participaram da seleção. Com isso, o número comparado ao SB3 não herda o viés de escolher a melhor entre muitas configurações. Nos 15 workers restantes, uma última exploração em torno da vencedora: alvo a cada 500 passos, ε final 0.01 e início do treino em 10000 passos.",
   "conclusion": null,
   "status": "running"
  }
