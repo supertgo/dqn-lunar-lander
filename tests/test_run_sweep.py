@@ -37,16 +37,24 @@ def test_run_sweep_runs_pending_configs_sequentially_and_skips_completed(
     assert "2 run(s) pendente(s), 1 worker(s)" in output
 
 
-def test_mock_train_writes_run_files_and_is_reproducible(tmp_path: Path):
+def test_train_writes_run_files(tmp_path: Path):
     from dqn.config import EvalConfig, RunConfig
 
     cfg = RunConfig(
         algo="dqn",
         hyperparameters={
+            "learning_rate": 1e-3,
+            "gamma": 0.99,
+            "batch_size": 4,
+            "buffer_size": 100,
+            "learning_starts": 20,
+            "target_update_interval": 10,
             "total_timesteps": 20,
             "epsilon_start": 1.0,
             "epsilon_end": 0.05,
             "epsilon_decay_steps": 10,
+            "train_freq": 1,
+            "hidden_sizes": [64, 64],
         },
         evaluation=EvalConfig(
             env_id="LunarLander-v3",
@@ -76,9 +84,9 @@ def test_mock_train_writes_run_files_and_is_reproducible(tmp_path: Path):
         "train.csv",
         "eval.csv",
         "summary.json",
+        "model.pt",
     } <= {path.name for path in run_dir.iterdir()}
     assert (run_dir / "summary.json").is_file()
-    assert run_sweep._train(cfg, tmp_path) == summary
 
 
 def test_run_sweep_rejects_non_positive_workers(tmp_path: Path):

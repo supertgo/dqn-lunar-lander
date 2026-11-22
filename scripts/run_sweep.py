@@ -1,104 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import json
-import random
-import socket
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from dqn.config import RunConfig, Sweep, load_sweep
-
-TRAIN_COLUMNS = ["step", "episode", "return", "length", "epsilon", "loss"]
-EVAL_COLUMNS = ["step", "mean_return", "std_return", "success_rate", "mean_length"]
+from dqn.train import train
 
 
 def _train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
-    """Mock temporário do treino; substitua por dqn.train.train na integração."""
-    run_dir = results_dir / cfg.run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "config.json").write_text(
-        json.dumps(cfg.to_dict(), indent=2),
-        encoding="utf-8",
-    )
-    (run_dir / "meta.json").write_text(
-        json.dumps(
-            {
-                "hostname": socket.gethostname(),
-                "git_commit": "mock",
-                "created_at": datetime.now(UTC).isoformat(),
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-    hp = cfg.hyperparameters
-    total_steps = max(1, int(hp.get("total_timesteps", 1)))
-    n_episodes = min(10, total_steps)
-    epsilon_start = float(hp.get("epsilon_start", 1.0))
-    epsilon_end = float(hp.get("epsilon_end", 0.05))
-    decay_steps = max(1, int(hp.get("epsilon_decay_steps", total_steps)))
-    rng = random.Random(cfg.seed)
-
-    train_rows = []
-    for episode in range(1, n_episodes + 1):
-        step = max(1, total_steps * episode // n_episodes)
-        progress = episode / n_episodes
-        train_rows.append(
-            {
-                "step": step,
-                "episode": episode,
-                "return": -200.0 + 400.0 * progress + rng.uniform(-20.0, 20.0),
-                "length": rng.randint(100, 500),
-                "epsilon": max(
-                    epsilon_end,
-                    epsilon_start
-                    + (epsilon_end - epsilon_start) * min(step / decay_steps, 1.0),
-                ),
-                "loss": max(0.0, 1.0 / episode + rng.uniform(0.0, 0.05)),
-            }
-        )
-
-    with (run_dir / "train.csv").open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=TRAIN_COLUMNS)
-        writer.writeheader()
-        writer.writerows(train_rows)
-
-    eval_freq = max(1, int(cfg.evaluation.eval_freq))
-    eval_steps = list(range(eval_freq, total_steps + 1, eval_freq))
-    eval_steps = eval_steps[:10]
-    eval_rows = [
-        {
-            "step": step,
-            "mean_return": -200.0 + 400.0 * step / total_steps,
-            "std_return": 20.0,
-            "success_rate": min(1.0, step / total_steps),
-            "mean_length": 300.0,
-        }
-        for step in eval_steps
-    ]
-    with (run_dir / "eval.csv").open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=EVAL_COLUMNS)
-        writer.writeheader()
-        writer.writerows(eval_rows)
-
-    final_eval = {
-        "mean_return": float(train_rows[-1]["return"]),
-        "std_return": 20.0,
-        "success_rate": 1.0,
-        "mean_length": 300.0,
-        "n_episodes": int(cfg.evaluation.final_eval_episodes),
-        "wall_time_s": 0.0,
-    }
-    (run_dir / "summary.json").write_text(
-        json.dumps(final_eval, indent=2),
-        encoding="utf-8",
-    )
-    return final_eval
+    return train(cfg, results_dir)
 
 
 def _run_one(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
