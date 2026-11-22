@@ -73,9 +73,15 @@ class DQNAgent:
 
         self.optimizer.zero_grad()
         loss.backward()
+        if self.hp.max_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(self.q.parameters(), self.hp.max_grad_norm)
         self.optimizer.step()
 
         return float(loss.item())
+
+    def set_learning_rate(self, lr: float) -> None:
+        for group in self.optimizer.param_groups:
+            group["lr"] = lr
 
     def sync_target(self) -> None:
         self.q_target.load_state_dict(self.q.state_dict())

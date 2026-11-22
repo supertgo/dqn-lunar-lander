@@ -8,10 +8,18 @@ import gymnasium as gym
 import numpy as np
 
 from dqn.agent import DQNAgent
-from dqn.config import RunConfig
+from dqn.config import Hyperparameters, RunConfig
 from dqn.evaluate import evaluate
 from dqn.exploration import LinearEpsilon
 from dqn.run_logger import RunLogger
+
+
+def learning_rate_at(step: int, hp: Hyperparameters) -> float:
+    """Taxa de aprendizado no passo `step`: constante ou decaimento linear até learning_rate_end."""
+    if hp.learning_rate_end is None:
+        return hp.learning_rate
+    frac = min(step / hp.total_timesteps, 1.0)
+    return hp.learning_rate + frac * (hp.learning_rate_end - hp.learning_rate)
 
 
 def train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
@@ -57,6 +65,8 @@ def train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
                     and step % hp.train_freq == 0
                     and len(agent.buffer) >= hp.batch_size
                 ):
+                    if hp.learning_rate_end is not None:
+                        agent.set_learning_rate(learning_rate_at(step, hp))
                     ep_losses.append(agent.update())
 
                 if step % hp.target_update_interval == 0:

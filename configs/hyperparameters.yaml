@@ -4,6 +4,8 @@
 
 # Otimização
 learning_rate: 0.0005
+learning_rate_end: null  # se definido, lr decai linearmente até este valor ao longo do treino
+max_grad_norm: null  # se definido, limita a norma do gradiente (clipping)
 gamma: 0.99  # fator de desconto
 batch_size: 128
 
