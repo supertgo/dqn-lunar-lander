@@ -1,111 +1,32 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import json
-import random
-import socket
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from dqn.config import RunConfig, Sweep, load_sweep
-
-TRAIN_COLUMNS = ["step", "episode", "return", "length", "epsilon", "loss"]
-EVAL_COLUMNS = ["step", "mean_return", "std_return", "success_rate", "mean_length"]
+from dqn.train import train
 
 
 def _train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
-    """Mock temporário do treino; substitua por dqn.train.train na integração."""
-    run_dir = results_dir / cfg.run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "config.json").write_text(
-        json.dumps(cfg.to_dict(), indent=2),
-        encoding="utf-8",
-    )
-    (run_dir / "meta.json").write_text(
-        json.dumps(
-            {
-                "hostname": socket.gethostname(),
-                "git_commit": "mock",
-                "created_at": datetime.now(UTC).isoformat(),
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+    """Treina uma run com dqn.train.train usando 1 thread do torch.
 
-    hp = cfg.hyperparameters
-    total_steps = max(1, int(hp.get("total_timesteps", 1)))
-    n_episodes = min(10, total_steps)
-    epsilon_start = float(hp.get("epsilon_start", 1.0))
-    epsilon_end = float(hp.get("epsilon_end", 0.05))
-    decay_steps = max(1, int(hp.get("epsilon_decay_steps", total_steps)))
-    rng = random.Random(cfg.seed)
+    O paralelismo vem de rodar várias runs em processos (--workers); sem limitar as
+    threads, cada processo tentaria usar todos os núcleos e eles disputariam a CPU.
+    """
+    import torch
 
-    train_rows = []
-    for episode in range(1, n_episodes + 1):
-        step = max(1, total_steps * episode // n_episodes)
-        progress = episode / n_episodes
-        train_rows.append(
-            {
-                "step": step,
-                "episode": episode,
-                "return": -200.0 + 400.0 * progress + rng.uniform(-20.0, 20.0),
-                "length": rng.randint(100, 500),
-                "epsilon": max(
-                    epsilon_end,
-                    epsilon_start
-                    + (epsilon_end - epsilon_start) * min(step / decay_steps, 1.0),
-                ),
-                "loss": max(0.0, 1.0 / episode + rng.uniform(0.0, 0.05)),
-            }
-        )
-
-    with (run_dir / "train.csv").open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=TRAIN_COLUMNS)
-        writer.writeheader()
-        writer.writerows(train_rows)
-
-    eval_freq = max(1, int(cfg.evaluation.eval_freq))
-    eval_steps = list(range(eval_freq, total_steps + 1, eval_freq))
-    eval_steps = eval_steps[:10]
-    eval_rows = [
-        {
-            "step": step,
-            "mean_return": -200.0 + 400.0 * step / total_steps,
-            "std_return": 20.0,
-            "success_rate": min(1.0, step / total_steps),
-            "mean_length": 300.0,
-        }
-        for step in eval_steps
-    ]
-    with (run_dir / "eval.csv").open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=EVAL_COLUMNS)
-        writer.writeheader()
-        writer.writerows(eval_rows)
-
-    final_eval = {
-        "mean_return": float(train_rows[-1]["return"]),
-        "std_return": 20.0,
-        "success_rate": 1.0,
-        "mean_length": 300.0,
-        "n_episodes": int(cfg.evaluation.final_eval_episodes),
-        "wall_time_s": 0.0,
-    }
-    (run_dir / "summary.json").write_text(
-        json.dumps(final_eval, indent=2),
-        encoding="utf-8",
-    )
-    return final_eval
+    torch.set_num_threads(1)
+    return train(cfg, results_dir)
 
 
 def _run_one(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
     return _train(cfg, results_dir)
 
 
-def run_sweep(sweep: Sweep, workers: int = 1) -> list[dict[str, Any]]:
+def run_sweep(sweep: Sweep | _CombinedSweep, workers: int = 1) -> list[dict[str, Any]]:
     """Execute cada configuração pendente do sweep e retorna os summaries."""
     if workers < 1:
         raise ValueError("workers deve ser pelo menos 1")
@@ -114,9 +35,7 @@ def run_sweep(sweep: Sweep, workers: int = 1) -> list[dict[str, Any]]:
 
     expanded_configs = sweep.run_configs()
     if not expanded_configs:
-        raise ValueError(
-            f"Sweep {sweep.name!r} não gera nenhuma run; configure seeds e variants."
-        )
+        raise ValueError(f"Sweep {sweep.name!r} não gera nenhuma run; configure seeds e variants.")
 
     configs: list[RunConfig] = []
     seen_run_ids: set[str] = set()
@@ -132,8 +51,7 @@ def run_sweep(sweep: Sweep, workers: int = 1) -> list[dict[str, Any]]:
         configs.append(cfg)
 
     print(
-        f"Sweep {sweep.name}: {len(configs)} run(s) pendente(s), "
-        f"{workers} worker(s).",
+        f"Sweep {sweep.name}: {len(configs)} run(s) pendente(s), {workers} worker(s).",
         flush=True,
     )
 
@@ -148,9 +66,7 @@ def run_sweep(sweep: Sweep, workers: int = 1) -> list[dict[str, Any]]:
 
     summaries_by_id: dict[str, dict[str, Any]] = {}
     with ProcessPoolExecutor(max_workers=workers) as executor:
-        future_configs = {
-            executor.submit(_run_one, cfg, sweep.results_dir): cfg for cfg in configs
-        }
+        future_configs = {executor.submit(_run_one, cfg, sweep.results_dir): cfg for cfg in configs}
         for future in as_completed(future_configs):
             cfg = future_configs[future]
             summary = future.result()
@@ -160,14 +76,41 @@ def run_sweep(sweep: Sweep, workers: int = 1) -> list[dict[str, Any]]:
     return [summaries_by_id[cfg.run_id] for cfg in configs]
 
 
+@dataclass(frozen=True)
+class _CombinedSweep:
+    """Vários sweeps numa fila só: os workers não ficam ociosos entre um sweep e outro."""
+
+    sweeps: list[Sweep]
+
+    @property
+    def name(self) -> str:
+        return "+".join(sweep.name for sweep in self.sweeps)
+
+    @property
+    def results_dir(self) -> Path:
+        return self.sweeps[0].results_dir
+
+    def run_configs(self) -> list[RunConfig]:
+        return [cfg for sweep in self.sweeps for cfg in sweep.run_configs()]
+
+
+def _combine(sweeps: list[Sweep]) -> Sweep | _CombinedSweep:
+    if len(sweeps) == 1:
+        return sweeps[0]
+    if len({sweep.results_dir for sweep in sweeps}) > 1:
+        raise ValueError("Sweeps combinados precisam do mesmo results_dir")
+    return _CombinedSweep(sweeps)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Executa sequencialmente (ou em paralelo) as runs de um sweep."
     )
     parser.add_argument(
-        "sweep",
+        "sweeps",
         type=Path,
-        help="caminho do arquivo YAML do sweep",
+        nargs="+",
+        help="arquivo(s) YAML de sweep; vários rodam numa fila só, sem repetir runs",
     )
     parser.add_argument(
         "--workers",
@@ -177,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    sweep = load_sweep(args.sweep)
+    sweep = _combine([load_sweep(path) for path in args.sweeps])
     run_sweep(sweep, workers=args.workers)
     return 0
 
