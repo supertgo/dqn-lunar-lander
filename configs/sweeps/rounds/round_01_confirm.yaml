@@ -1,0 +1,6 @@
+# Rodada 1 — confirmação: seeds extras para as duas líderes da rodada 0.
+name: round_01_confirm
+seeds: [3, 4]
+variants:
+  - {}                # referência (219 ± 4)
+  - batch_size: 64    # maior média (239 ± 26)

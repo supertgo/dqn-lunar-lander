@@ -1,0 +1,46 @@
+[
+  {
+    "round": 0,
+    "title": "Seis sweeps de um fator por vez",
+    "sweeps": [
+      "configs/sweeps/learning_rate.yaml",
+      "configs/sweeps/gamma.yaml",
+      "configs/sweeps/batch_size.yaml",
+      "configs/sweeps/target_update.yaml",
+      "configs/sweeps/buffer_size.yaml",
+      "configs/sweeps/epsilon.yaml"
+    ],
+    "rationale": "Ponto de partida: a configuração de referência (lr 5e-4, γ 0.99, batch 128, buffer 100k, alvo a cada 1000 passos, ε 1→0.05 em 50k, 300k passos, rede 256×256) e quatro valores por eixo, 3 seeds cada. Mede a sensibilidade de cada hiperparâmetro isoladamente.",
+    "conclusion": "γ = 0.99 é o único valor que funciona; lr 1e-4 não aprende em 300k passos; alvo a cada 10k passos e ε final 0.01 pioram muito. Batch 64 teve a maior média (239 ± 26); a referência teve o menor desvio (219 ± 4).",
+    "status": "done"
+  },
+  {
+    "round": 1,
+    "title": "Confirmar as líderes e explorar combinações",
+    "sweeps": [
+      "configs/sweeps/rounds/round_01_confirm.yaml",
+      "configs/sweeps/rounds/round_01_explore.yaml"
+    ],
+    "sb3_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "rationale": "Com 3 seeds, o desvio entre seeds chega a ±80, então as líderes recebem as seeds 3 e 4 antes de qualquer conclusão. Em paralelo, combina batch 64 com os vizinhos promissores (lr 7e-4 e 1e-3, alvo a cada 500, ε em 25k, buffer 300k) e abre dois eixos ainda não testados: train_freq (2 em vez de 4) e o tamanho da rede (128×128 e 512×512). O SB3 com a configuração padrão roda junto, com 5 seeds e os mesmos 300k passos, como linha de referência.",
+    "conclusion": "A confirmação mudou o quadro: com as seeds 3 e 4, a referência caiu para 191 ± 82 (score 109), enquanto batch 64 se manteve em 217 ± 40. A variância entre seeds é o principal problema, então 3 seeds não bastam para decidir. Melhor nova configuração: batch 64 + train_freq 2 (226 ± 39, score 187). Subir o learning rate junto com batch 64 piora a estabilidade (lr 7e-4 e 1e-3: desvio > 110), e atualizar a rede alvo a cada 500 passos piora em todos os casos. A rede 512×512 ajuda um pouco (206 ± 50); a 128×128 é pior (151). O SB3 com a configuração padrão ficou em -39 ± 26 com 300 mil passos: os padrões do SB3 (alvo a cada 10 mil passos, lr 1e-4, rede 64×64) são pensados para Atari e aprendem devagar no Lunar Lander.",
+    "status": "done"
+  },
+  {
+    "round": 2,
+    "title": "Combinar as líderes, agora com 5 seeds",
+    "sweeps": [
+      "configs/sweeps/rounds/round_02_confirm.yaml",
+      "configs/sweeps/rounds/round_02_explore.yaml"
+    ],
+    "rationale": "Como a variância entre seeds decidiu a rodada 1, a exploração passa a usar 5 seeds. As cinco líderes que só tinham 3 seeds (batch 64 + train_freq 2, buffer 10k, ε em 10k, lr 1e-3, buffer 300k) recebem as seeds 3 e 4. A exploração combina a nova líder (batch 64 + train_freq 2) com os vizinhos que também lideraram: buffer 10k, ε em 10k, rede 512×512, alvo a cada 2000 passos e lr 3e-4, este último para testar se um passo menor reduz a variância. Também testa as mesmas combinações sem train_freq 2 e a combinação de todas as líderes.",
+    "conclusion": null,
+    "status": "running"
+  }
+]
