@@ -1,7 +1,6 @@
-from pytest import approx
-
 from aggregate import load_runs, summarize
 from fake_runs import write_fake_run
+from pytest import approx
 
 HP_A = {"learning_rate": 1e-3, "gamma": 0.99}
 HP_B = {"learning_rate": 1e-2, "gamma": 0.99}
@@ -87,3 +86,11 @@ def test_empty_results_dir_gives_empty_tables(tmp_path):
 
     assert len(runs) == 0
     assert len(summarize(runs)) == 0
+
+
+def test_summarize_keeps_algo_name(tmp_path):
+    write_sweep(tmp_path)
+
+    configs = summarize(load_runs(tmp_path))
+
+    assert set(configs["algo"]) == {"dqn"}

@@ -5,7 +5,6 @@ import pandas as pd
 
 from dqn.config import RESULTS_DIR
 
-
 ID_COLUMNS = ["run_id", "config_id", "algo", "seed"]
 SUMMARY_METRICS = [
     "mean_return",
@@ -54,7 +53,7 @@ def hyperparameter_columns(runs: pd.DataFrame) -> list[str]:
 
 def summarize(runs: pd.DataFrame) -> pd.DataFrame:
     aggregations = {
-        "n_algo": ("algo", "first"),
+        "algo": ("algo", "first"),
         "n_seeds": ("seed", "size"),
         **{hp: (hp, "first") for hp in hyperparameter_columns(runs)},
     }
