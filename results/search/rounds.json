@@ -51,6 +51,17 @@
       "configs/sweeps/rounds/round_03_explore.yaml"
     ],
     "rationale": "As duas líderes recebem 5 seeds novas (5 a 9) e passam a ter 10, para saber se o desvio baixo se sustenta. A exploração combina a líder (batch 64 + train_freq 2 + 512×512) com o que funcionou nas outras combinações: alvo a cada 2000 passos, buffer 10k, ε em 10k e os dois juntos. Também testa lr 3e-4 na rede maior, train_freq 1 (o dobro de atualizações), e remove um ingrediente por vez (sem batch 64, sem train_freq 2) para saber qual deles a rede maior precisa. Por fim, testa uma rede mais profunda de mesma ordem de tamanho (256×256×256).",
+    "conclusion": "Com 10 seeds, a líder da rodada 2 (batch 64 + train_freq 2 + 512×512) regrediu de 241 ± 11 para 226 ± 33: parte do resultado anterior era sorte de seed, e o mesmo aconteceu com a segunda colocada (232 ± 18 → 226 ± 30). A ablação mostrou que o batch 64 não é necessário: train_freq 2 + 512×512 com batch 128 fez 233 ± 14 (score 219), a nova líder. Sem train_freq 2, a rede maior fica instável (batch 64 + 512×512: 181 ± 95), então a rede grande precisa de mais atualizações. train_freq 1 também funciona (239 ± 23), mas leva cerca de 45 minutos por run. Alvo a cada 2000 passos, lr 3e-4 e a rede 256×256×256 pioraram muito. As runs com rede 512×512 levaram de 25 a 45 minutos com 25 processos simultâneos.",
+    "status": "done"
+  },
+  {
+    "round": 4,
+    "title": "Vizinhança de train_freq 2 + rede 512×512",
+    "sweeps": [
+      "configs/sweeps/rounds/round_04_confirm.yaml",
+      "configs/sweeps/rounds/round_04_explore.yaml"
+    ],
+    "rationale": "As duas novas líderes (train_freq 2 + 512×512, e batch 64 + train_freq 1 + 512×512) recebem as seeds 5 a 9, porque a rodada 3 mostrou que 5 seeds superestimam as líderes. A exploração parte de train_freq 2 + 512×512 com batch 128 e muda um eixo por vez: buffer 10k e 300k, batch 256, train_freq 1, ε em 10k, lr 1e-3, γ 0.995 (entre o 0.99 que funciona e o 0.999 instável) e início do treino em 1000 passos, um eixo ainda não testado.",
     "conclusion": null,
     "status": "running"
   }
