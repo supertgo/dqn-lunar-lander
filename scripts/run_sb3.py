@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import argparse
 from pathlib import Path
 from typing import Any
@@ -29,6 +31,7 @@ class _SB3LoggingCallback(BaseCallback):
         self.episode = 0
         self.ep_return = 0.0
         self.ep_length = 0
+        self.best_eval_return = float("-inf")
 
     def _on_step(self) -> bool:
         reward = float(self.locals["rewards"][0])
@@ -61,6 +64,13 @@ class _SB3LoggingCallback(BaseCallback):
                 success_rate=eval_res["success_rate"],
                 mean_length=eval_res["mean_length"],
             )
+            # Análise extra: mesmo critério de melhor checkpoint do nosso DQN.
+            if eval_res["mean_return"] > self.best_eval_return:
+                self.best_eval_return = eval_res["mean_return"]
+                self.model.save(self.run_logger.dir / "best_model.zip")
+                (self.run_logger.dir / "best_checkpoint.json").write_text(
+                    json.dumps({"step": self.num_timesteps, "eval_mean_return": self.best_eval_return})
+                )
 
         return True
         

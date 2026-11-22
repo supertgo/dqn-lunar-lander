@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,7 @@ def train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
             ep_return = 0.0
             ep_length = 0
             ep_losses: list[float] = []
+            best_eval_return = float("-inf")
 
             for step in range(1, hp.total_timesteps + 1):
                 epsilon = epsilon_schedule(step - 1)
@@ -88,6 +90,15 @@ def train(cfg: RunConfig, results_dir: Path) -> dict[str, Any]:
                         success_rate=eval_res["success_rate"],
                         mean_length=eval_res["mean_length"],
                     )
+                    # Análise extra (não muda o protocolo): guarda o melhor modelo
+                    # visto nas avaliações intermediárias; o resultado oficial segue
+                    # sendo o do modelo do último passo.
+                    if eval_res["mean_return"] > best_eval_return:
+                        best_eval_return = eval_res["mean_return"]
+                        agent.save(logger.dir / "best_model.pt")
+                        (logger.dir / "best_checkpoint.json").write_text(
+                            json.dumps({"step": step, "eval_mean_return": best_eval_return})
+                        )
 
             agent.save(logger.dir / "model.pt")
             final_eval = evaluate(greedy_policy, eval_cfg, eval_cfg.final_eval_episodes)

@@ -235,3 +235,7 @@ report/*.fls
 report/*.fdb_latexmk
 report/*.pdf
 results/smoke/
+results/extra/*/*/model.pt
+results/extra/*/*/best_model.pt
+results/extra/*/*/model.zip
+results/extra/*/*/best_model.zip
