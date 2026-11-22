@@ -1,68 +1,79 @@
 [
-  {
-    "round": 0,
-    "title": "Seis sweeps de um fator por vez",
-    "sweeps": [
-      "configs/sweeps/learning_rate.yaml",
-      "configs/sweeps/gamma.yaml",
-      "configs/sweeps/batch_size.yaml",
-      "configs/sweeps/target_update.yaml",
-      "configs/sweeps/buffer_size.yaml",
-      "configs/sweeps/epsilon.yaml"
-    ],
-    "rationale": "Ponto de partida: a configuração de referência (lr 5e-4, γ 0.99, batch 128, buffer 100k, alvo a cada 1000 passos, ε 1→0.05 em 50k, 300k passos, rede 256×256) e quatro valores por eixo, 3 seeds cada. Mede a sensibilidade de cada hiperparâmetro isoladamente.",
-    "conclusion": "γ = 0.99 é o único valor que funciona; lr 1e-4 não aprende em 300k passos; alvo a cada 10k passos e ε final 0.01 pioram muito. Batch 64 teve a maior média (239 ± 26); a referência teve o menor desvio (219 ± 4).",
-    "status": "done"
-  },
-  {
-    "round": 1,
-    "title": "Confirmar as líderes e explorar combinações",
-    "sweeps": [
-      "configs/sweeps/rounds/round_01_confirm.yaml",
-      "configs/sweeps/rounds/round_01_explore.yaml"
-    ],
-    "sb3_seeds": [
-      0,
-      1,
-      2,
-      3,
-      4
-    ],
-    "rationale": "Com 3 seeds, o desvio entre seeds chega a ±80, então as líderes recebem as seeds 3 e 4 antes de qualquer conclusão. Em paralelo, combina batch 64 com os vizinhos promissores (lr 7e-4 e 1e-3, alvo a cada 500, ε em 25k, buffer 300k) e abre dois eixos ainda não testados: train_freq (2 em vez de 4) e o tamanho da rede (128×128 e 512×512). O SB3 com a configuração padrão roda junto, com 5 seeds e os mesmos 300k passos, como linha de referência.",
-    "conclusion": "A confirmação mudou o quadro: com as seeds 3 e 4, a referência caiu para 191 ± 82 (score 109), enquanto batch 64 se manteve em 217 ± 40. A variância entre seeds é o principal problema, então 3 seeds não bastam para decidir. Melhor nova configuração: batch 64 + train_freq 2 (226 ± 39, score 187). Subir o learning rate junto com batch 64 piora a estabilidade (lr 7e-4 e 1e-3: desvio > 110), e atualizar a rede alvo a cada 500 passos piora em todos os casos. A rede 512×512 ajuda um pouco (206 ± 50); a 128×128 é pior (151). O SB3 com a configuração padrão ficou em -39 ± 26 com 300 mil passos: os padrões do SB3 (alvo a cada 10 mil passos, lr 1e-4, rede 64×64) são pensados para Atari e aprendem devagar no Lunar Lander.",
-    "status": "done"
-  },
-  {
-    "round": 2,
-    "title": "Combinar as líderes, agora com 5 seeds",
-    "sweeps": [
-      "configs/sweeps/rounds/round_02_confirm.yaml",
-      "configs/sweeps/rounds/round_02_explore.yaml"
-    ],
-    "rationale": "Como a variância entre seeds decidiu a rodada 1, a exploração passa a usar 5 seeds. As cinco líderes que só tinham 3 seeds (batch 64 + train_freq 2, buffer 10k, ε em 10k, lr 1e-3, buffer 300k) recebem as seeds 3 e 4. A exploração combina a nova líder (batch 64 + train_freq 2) com os vizinhos que também lideraram: buffer 10k, ε em 10k, rede 512×512, alvo a cada 2000 passos e lr 3e-4, este último para testar se um passo menor reduz a variância. Também testa as mesmas combinações sem train_freq 2 e a combinação de todas as líderes.",
-    "conclusion": "Nova líder com ganho grande: batch 64 + train_freq 2 + rede 512×512 fez 241 ± 11 com 5 seeds (score 230, contra 187 da líder anterior). Em segundo, batch 64 + train_freq 2 + buffer 10k + ε em 10k (232 ± 18, score 214), e em terceiro batch 64 + train_freq 2 + alvo a cada 2000 passos (227 ± 27). A confirmação derrubou batch 64 + train_freq 2 sozinha para 204 ± 41 com 5 seeds, então o ganho vem da combinação com a rede maior ou com buffer e ε menores, e não do train_freq isolado. lr 3e-4 aumentou a variância (± 87) em vez de reduzir. Buffer 10k é o eixo isolado mais estável (207 ± 15).",
-    "status": "done"
-  },
-  {
-    "round": 3,
-    "title": "Refinar a rede 512×512 e testar a robustez das líderes",
-    "sweeps": [
-      "configs/sweeps/rounds/round_03_confirm.yaml",
-      "configs/sweeps/rounds/round_03_explore.yaml"
-    ],
-    "rationale": "As duas líderes recebem 5 seeds novas (5 a 9) e passam a ter 10, para saber se o desvio baixo se sustenta. A exploração combina a líder (batch 64 + train_freq 2 + 512×512) com o que funcionou nas outras combinações: alvo a cada 2000 passos, buffer 10k, ε em 10k e os dois juntos. Também testa lr 3e-4 na rede maior, train_freq 1 (o dobro de atualizações), e remove um ingrediente por vez (sem batch 64, sem train_freq 2) para saber qual deles a rede maior precisa. Por fim, testa uma rede mais profunda de mesma ordem de tamanho (256×256×256).",
-    "conclusion": "Com 10 seeds, a líder da rodada 2 (batch 64 + train_freq 2 + 512×512) regrediu de 241 ± 11 para 226 ± 33: parte do resultado anterior era sorte de seed, e o mesmo aconteceu com a segunda colocada (232 ± 18 → 226 ± 30). A ablação mostrou que o batch 64 não é necessário: train_freq 2 + 512×512 com batch 128 fez 233 ± 14 (score 219), a nova líder. Sem train_freq 2, a rede maior fica instável (batch 64 + 512×512: 181 ± 95), então a rede grande precisa de mais atualizações. train_freq 1 também funciona (239 ± 23), mas leva cerca de 45 minutos por run. Alvo a cada 2000 passos, lr 3e-4 e a rede 256×256×256 pioraram muito. As runs com rede 512×512 levaram de 25 a 45 minutos com 25 processos simultâneos.",
-    "status": "done"
-  },
-  {
-    "round": 4,
-    "title": "Vizinhança de train_freq 2 + rede 512×512",
-    "sweeps": [
-      "configs/sweeps/rounds/round_04_confirm.yaml",
-      "configs/sweeps/rounds/round_04_explore.yaml"
-    ],
-    "rationale": "As duas novas líderes (train_freq 2 + 512×512, e batch 64 + train_freq 1 + 512×512) recebem as seeds 5 a 9, porque a rodada 3 mostrou que 5 seeds superestimam as líderes. A exploração parte de train_freq 2 + 512×512 com batch 128 e muda um eixo por vez: buffer 10k e 300k, batch 256, train_freq 1, ε em 10k, lr 1e-3, γ 0.995 (entre o 0.99 que funciona e o 0.999 instável) e início do treino em 1000 passos, um eixo ainda não testado.",
-    "conclusion": null,
-    "status": "running"
-  }
+ {
+  "round": 0,
+  "title": "Seis sweeps de um fator por vez",
+  "sweeps": [
+   "configs/sweeps/learning_rate.yaml",
+   "configs/sweeps/gamma.yaml",
+   "configs/sweeps/batch_size.yaml",
+   "configs/sweeps/target_update.yaml",
+   "configs/sweeps/buffer_size.yaml",
+   "configs/sweeps/epsilon.yaml"
+  ],
+  "rationale": "Ponto de partida: a configuração de referência (lr 5e-4, γ 0.99, batch 128, buffer 100k, alvo a cada 1000 passos, ε 1→0.05 em 50k, 300k passos, rede 256×256) e quatro valores por eixo, 3 seeds cada. Mede a sensibilidade de cada hiperparâmetro isoladamente.",
+  "conclusion": "γ = 0.99 é o único valor que funciona; lr 1e-4 não aprende em 300k passos; alvo a cada 10k passos e ε final 0.01 pioram muito. Batch 64 teve a maior média (239 ± 26); a referência teve o menor desvio (219 ± 4).",
+  "status": "done"
+ },
+ {
+  "round": 1,
+  "title": "Confirmar as líderes e explorar combinações",
+  "sweeps": [
+   "configs/sweeps/rounds/round_01_confirm.yaml",
+   "configs/sweeps/rounds/round_01_explore.yaml"
+  ],
+  "sb3_seeds": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "rationale": "Com 3 seeds, o desvio entre seeds chega a ±80, então as líderes recebem as seeds 3 e 4 antes de qualquer conclusão. Em paralelo, combina batch 64 com os vizinhos promissores (lr 7e-4 e 1e-3, alvo a cada 500, ε em 25k, buffer 300k) e abre dois eixos ainda não testados: train_freq (2 em vez de 4) e o tamanho da rede (128×128 e 512×512). O SB3 com a configuração padrão roda junto, com 5 seeds e os mesmos 300k passos, como linha de referência.",
+  "conclusion": "A confirmação mudou o quadro: com as seeds 3 e 4, a referência caiu para 191 ± 82 (score 109), enquanto batch 64 se manteve em 217 ± 40. A variância entre seeds é o principal problema, então 3 seeds não bastam para decidir. Melhor nova configuração: batch 64 + train_freq 2 (226 ± 39, score 187). Subir o learning rate junto com batch 64 piora a estabilidade (lr 7e-4 e 1e-3: desvio > 110), e atualizar a rede alvo a cada 500 passos piora em todos os casos. A rede 512×512 ajuda um pouco (206 ± 50); a 128×128 é pior (151). O SB3 com a configuração padrão ficou em -39 ± 26 com 300 mil passos: os padrões do SB3 (alvo a cada 10 mil passos, lr 1e-4, rede 64×64) são pensados para Atari e aprendem devagar no Lunar Lander.",
+  "status": "done"
+ },
+ {
+  "round": 2,
+  "title": "Combinar as líderes, agora com 5 seeds",
+  "sweeps": [
+   "configs/sweeps/rounds/round_02_confirm.yaml",
+   "configs/sweeps/rounds/round_02_explore.yaml"
+  ],
+  "rationale": "Como a variância entre seeds decidiu a rodada 1, a exploração passa a usar 5 seeds. As cinco líderes que só tinham 3 seeds (batch 64 + train_freq 2, buffer 10k, ε em 10k, lr 1e-3, buffer 300k) recebem as seeds 3 e 4. A exploração combina a nova líder (batch 64 + train_freq 2) com os vizinhos que também lideraram: buffer 10k, ε em 10k, rede 512×512, alvo a cada 2000 passos e lr 3e-4, este último para testar se um passo menor reduz a variância. Também testa as mesmas combinações sem train_freq 2 e a combinação de todas as líderes.",
+  "conclusion": "Nova líder com ganho grande: batch 64 + train_freq 2 + rede 512×512 fez 241 ± 11 com 5 seeds (score 230, contra 187 da líder anterior). Em segundo, batch 64 + train_freq 2 + buffer 10k + ε em 10k (232 ± 18, score 214), e em terceiro batch 64 + train_freq 2 + alvo a cada 2000 passos (227 ± 27). A confirmação derrubou batch 64 + train_freq 2 sozinha para 204 ± 41 com 5 seeds, então o ganho vem da combinação com a rede maior ou com buffer e ε menores, e não do train_freq isolado. lr 3e-4 aumentou a variância (± 87) em vez de reduzir. Buffer 10k é o eixo isolado mais estável (207 ± 15).",
+  "status": "done"
+ },
+ {
+  "round": 3,
+  "title": "Refinar a rede 512×512 e testar a robustez das líderes",
+  "sweeps": [
+   "configs/sweeps/rounds/round_03_confirm.yaml",
+   "configs/sweeps/rounds/round_03_explore.yaml"
+  ],
+  "rationale": "As duas líderes recebem 5 seeds novas (5 a 9) e passam a ter 10, para saber se o desvio baixo se sustenta. A exploração combina a líder (batch 64 + train_freq 2 + 512×512) com o que funcionou nas outras combinações: alvo a cada 2000 passos, buffer 10k, ε em 10k e os dois juntos. Também testa lr 3e-4 na rede maior, train_freq 1 (o dobro de atualizações), e remove um ingrediente por vez (sem batch 64, sem train_freq 2) para saber qual deles a rede maior precisa. Por fim, testa uma rede mais profunda de mesma ordem de tamanho (256×256×256).",
+  "conclusion": "Com 10 seeds, a líder da rodada 2 (batch 64 + train_freq 2 + 512×512) regrediu de 241 ± 11 para 226 ± 33: parte do resultado anterior era sorte de seed, e o mesmo aconteceu com a segunda colocada (232 ± 18 → 226 ± 30). A ablação mostrou que o batch 64 não é necessário: train_freq 2 + 512×512 com batch 128 fez 233 ± 14 (score 219), a nova líder. Sem train_freq 2, a rede maior fica instável (batch 64 + 512×512: 181 ± 95), então a rede grande precisa de mais atualizações. train_freq 1 também funciona (239 ± 23), mas leva cerca de 45 minutos por run. Alvo a cada 2000 passos, lr 3e-4 e a rede 256×256×256 pioraram muito. As runs com rede 512×512 levaram de 25 a 45 minutos com 25 processos simultâneos.",
+  "status": "done"
+ },
+ {
+  "round": 4,
+  "title": "Vizinhança de train_freq 2 + rede 512×512",
+  "sweeps": [
+   "configs/sweeps/rounds/round_04_confirm.yaml",
+   "configs/sweeps/rounds/round_04_explore.yaml"
+  ],
+  "rationale": "As duas novas líderes (train_freq 2 + 512×512, e batch 64 + train_freq 1 + 512×512) recebem as seeds 5 a 9, porque a rodada 3 mostrou que 5 seeds superestimam as líderes. A exploração parte de train_freq 2 + 512×512 com batch 128 e muda um eixo por vez: buffer 10k e 300k, batch 256, train_freq 1, ε em 10k, lr 1e-3, γ 0.995 (entre o 0.99 que funciona e o 0.999 instável) e início do treino em 1000 passos, um eixo ainda não testado.",
+  "conclusion": "Com 10 seeds, as duas líderes da rodada 3 regrediram de novo: train_freq 2 + 512×512 foi de 233 ± 14 para 226 ± 29 (score 197), e batch 64 + train_freq 1 + 512×512 para 237 ± 47 (score 191). Na exploração, batch 256 foi o melhor resultado da busca até agora: 245 ± 12 (score 233, 85% de pousos). Buffer 300k também ajudou (237 ± 32). Pioraram: buffer 10k (178), train_freq 1 com batch 128 (169), ε em 10k (206) e lr 1e-3 (213). γ 0.995 divergiu em parte das seeds (−87 ± 309) e início em 1000 passos ficou instável (186 ± 152). A rede grande parece pedir lotes maiores: o gradiente fica menos ruidoso.",
+  "status": "done"
+ },
+ {
+  "round": 5,
+  "title": "Batch grande com a rede 512×512",
+  "sweeps": [
+   "configs/sweeps/rounds/round_05_confirm.yaml",
+   "configs/sweeps/rounds/round_05_explore.yaml"
+  ],
+  "rationale": "Batch 256 e buffer 300k recebem as seeds 5 a 9. A exploração testa se o ganho do lote grande continua: batch 256 + buffer 300k, batch 512, e batch 256 com lr 1e-3 (lotes maiores costumam aceitar passos maiores). São 25 runs, uma por worker, para a rodada caber em cerca de 70 minutos e deixar tempo para a rodada final antes das 19:00.",
+  "conclusion": null,
+  "status": "running"
+ }
 ]

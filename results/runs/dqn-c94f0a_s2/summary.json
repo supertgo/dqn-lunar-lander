@@ -1,0 +1,8 @@
+{
+  "mean_return": 205.19206047057912,
+  "std_return": 102.45420773056351,
+  "success_rate": 0.65,
+  "mean_length": 273.66,
+  "n_episodes": 100,
+  "wall_time_s": 1942.657
+}

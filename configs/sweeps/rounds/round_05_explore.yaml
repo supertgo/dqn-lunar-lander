@@ -1,0 +1,7 @@
+# Rodada 5 — exploração com 5 seeds em torno de batch 256 + train_freq 2 + rede 512×512.
+name: round_05_explore
+seeds: [0, 1, 2, 3, 4]
+variants:
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, buffer_size: 300000}
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 512}
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, learning_rate: 0.001}
