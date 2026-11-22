@@ -44,6 +44,20 @@ plt.rcParams.update(
 )
 
 
+def format_steps(x: float, _pos: object = None) -> str:
+    """Rótulo do eixo de passos: 500, 1.5k, 250k, 1.5M (sem arredondar ticks vizinhos para o mesmo texto)."""
+    for divisor, suffix in ((1_000_000, "M"), (1_000, "k")):
+        if abs(x) >= divisor:
+            return f"{x / divisor:g}{suffix}"
+    return f"{x:g}"
+
+
+def seeds_note(n_min: int, n_max: int) -> str:
+    """ "1 seed", "3 seeds" ou "2–5 seeds" (quando configurações têm números de seeds diferentes)."""
+    count = f"{n_min}" if n_min == n_max else f"{n_min}–{n_max}"
+    return f"{count} seed" if n_max == 1 else f"{count} seeds"
+
+
 def load_curves(results_dir: Path, config_ids: list[str]) -> pd.DataFrame:
     frames = []
 
@@ -119,7 +133,7 @@ def plot_learning_curves(ax, curves: pd.DataFrame, labels: dict[str, str]) -> No
         color=TEXT_SECONDARY,
         fontsize=8,
     )
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x / 1000:.0f}k"))
+    ax.xaxis.set_major_formatter(FuncFormatter(format_steps))
     ax.set_xlabel("passos de treino")
     ax.set_ylabel("retorno médio (avaliação)")
 
@@ -169,11 +183,8 @@ def sweep_figure(
     )
     ax_final.set_xlabel(legend_title)
     n_seeds = configs[configs["config_id"].isin(labels)]["n_seeds"]
-    seeds_note = (
-        f"{n_seeds.min()}–{n_seeds.max()}" if n_seeds.min() != n_seeds.max() else f"{n_seeds.min()}"
-    )
     fig.suptitle(
-        f"{title}  ({seeds_note} seeds; faixa e barras = ±1 desvio)",
+        f"{title}  ({seeds_note(n_seeds.min(), n_seeds.max())}; faixa e barras = ±1 desvio)",
         color=TEXT_PRIMARY,
         fontsize=10,
         y=1.02,

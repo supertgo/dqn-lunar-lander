@@ -2,7 +2,14 @@ from types import SimpleNamespace
 
 import pandas as pd
 from fake_runs import write_fake_run
-from make_figures import load_curves, mean_curve, sweep_figure, variant_labels
+from make_figures import (
+    format_steps,
+    load_curves,
+    mean_curve,
+    seeds_note,
+    sweep_figure,
+    variant_labels,
+)
 from pytest import approx
 
 HP_A = {"learning_rate": 1e-3, "gamma": 0.99}
@@ -105,3 +112,18 @@ def test_sweep_figure_writes_file(tmp_path):
 
     assert out.is_file()
     assert out.stat().st_size > 0
+
+
+def test_format_steps_keeps_distinct_ticks_distinct():
+    assert format_steps(1500) == "1.5k"
+    assert format_steps(2000) == "2k"
+    assert format_steps(250_000) == "250k"
+    assert format_steps(1_500_000) == "1.5M"
+    assert format_steps(500) == "500"
+    assert format_steps(0) == "0"
+
+
+def test_seeds_note_uses_singular_and_ranges():
+    assert seeds_note(1, 1) == "1 seed"
+    assert seeds_note(3, 3) == "3 seeds"
+    assert seeds_note(2, 5) == "2–5 seeds"
