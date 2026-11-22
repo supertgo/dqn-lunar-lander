@@ -222,6 +222,7 @@ __marimo__/
 # --- projeto ---
 # Pesos de modelos ficam fora do git (compartilhar o melhor via Drive/Release)
 *.pt
+results/runs/*/model.zip
 # Derivados de results/runs/ — regenerados por scripts/aggregate.py
 results/aggregated/
 # Build do LaTeX
@@ -234,3 +235,17 @@ report/*.fls
 report/*.fdb_latexmk
 report/*.pdf
 results/smoke/
+results/extra/*/*/model.pt
+results/extra/*/*/best_model.pt
+results/extra/*/*/model.zip
+results/extra/*/*/best_model.zip
+
+# Experimentos da busca: ficam só localmente. No git, apenas o resultado final
+# (configs/sweeps/final.yaml, dqn-78d3c8) e o SB3 padrão comparado com ele (sb3-104563).
+results/runs/*
+!results/runs/dqn-78d3c8_s*/
+!results/runs/sb3-104563_s*/
+results/extra/
+results/search/
+configs/sweeps/rounds/
+configs/sweeps/extra/

@@ -1,12 +1,12 @@
-# Teste rápido de ponta a ponta. Rode antes de abrir PR.
+# Teste rápido de ponta a ponta (fora do git: results/smoke/). Mede tempo e confere que nada quebra.
 name: smoke
-seeds:
-results_dir:
+seeds: [0]
+results_dir: results/smoke
 variants:
-  - total_timesteps:
-    learning_starts:
-    epsilon_decay_steps:
+  - total_timesteps: 30000
+    learning_starts: 1000
+    epsilon_decay_steps: 10000
 evaluation:
-  eval_freq:
-  eval_episodes:
-  final_eval_episodes:
+  eval_freq: 5000
+  eval_episodes: 5
+  final_eval_episodes: 10

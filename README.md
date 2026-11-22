@@ -26,7 +26,7 @@ dqn-lunar-lander/
 │   └── sweeps/                  # um arquivo por eixo da busca
 │       ├── learning_rate.yaml  gamma.yaml  buffer_size.yaml
 │       ├── batch_size.yaml  target_update.yaml  epsilon.yaml
-│       ├── final.yaml           # melhor configuração (comparação com SB3)
+│       ├── final.yaml           # configuração final: referência + clipping + decaimento do lr
 │       └── smoke.yaml           # teste rápido de ponta a ponta
 ├── src/dqn/                     # pacote do DQN — nunca importa SB3/RLlib/Keras-RL
 │   ├── network.py               # rede Q

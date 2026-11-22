@@ -1,5 +1,8 @@
 # Cada variant sobrescreve configs/hyperparameters.yaml e roda com todas as seeds.
 name: gamma
-seeds:
+seeds: [0, 1, 2]
 variants:
-  - gamma:
+  - gamma: 0.9
+  - gamma: 0.95
+  - gamma: 0.99
+  - gamma: 0.999

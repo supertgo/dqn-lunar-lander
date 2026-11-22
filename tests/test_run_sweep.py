@@ -37,6 +37,34 @@ def test_run_sweep_runs_pending_configs_sequentially_and_skips_completed(
     assert "2 run(s) pendente(s), 1 worker(s)" in output
 
 
+def test_train_delegates_to_real_dqn_training_with_one_thread(tmp_path: Path, monkeypatch):
+    import torch
+
+    calls = []
+
+    def fake_dqn_train(cfg, results_dir):
+        calls.append((cfg, results_dir, torch.get_num_threads()))
+        return {"mean_return": 1.0}
+
+    monkeypatch.setattr(run_sweep, "train", fake_dqn_train)
+    original_threads = torch.get_num_threads()
+    try:
+        cfg = SimpleNamespace(run_id="dqn-x_s0")
+
+        summary = run_sweep._train(cfg, tmp_path)
+    finally:
+        torch.set_num_threads(original_threads)
+
+    assert summary == {"mean_return": 1.0}
+    assert calls == [(cfg, tmp_path, 1)]
+
+
+def test_run_sweep_uses_dqn_train_function():
+    from dqn.train import train
+
+    assert run_sweep.train is train
+
+
 def test_train_writes_run_files(tmp_path: Path):
     from dqn.config import EvalConfig, RunConfig
 
@@ -121,3 +149,42 @@ def test_main_loads_sweep_and_uses_requested_workers(monkeypatch, tmp_path: Path
     assert run_sweep.main([str(tmp_path / "sweep.yaml"), "--workers", "3"]) == 0
     assert loaded == [tmp_path / "sweep.yaml"]
     assert runs == [(sweep, 3)]
+
+
+def test_main_runs_several_sweeps_in_one_queue_without_duplicates(monkeypatch, tmp_path: Path):
+    shared = SimpleNamespace(run_id="dqn-base_s0")
+    sweeps = {
+        tmp_path / "a.yaml": SimpleNamespace(
+            name="a",
+            results_dir=tmp_path,
+            run_configs=lambda: [shared, SimpleNamespace(run_id="dqn-a_s0")],
+        ),
+        tmp_path / "b.yaml": SimpleNamespace(
+            name="b",
+            results_dir=tmp_path,
+            run_configs=lambda: [shared, SimpleNamespace(run_id="dqn-b_s0")],
+        ),
+    }
+    trained = []
+    monkeypatch.setattr(run_sweep, "load_sweep", lambda path: sweeps[path])
+    monkeypatch.setattr(
+        run_sweep, "_train", lambda cfg, results_dir: trained.append(cfg.run_id) or {}
+    )
+
+    assert run_sweep.main([str(tmp_path / "a.yaml"), str(tmp_path / "b.yaml")]) == 0
+    assert trained == ["dqn-base_s0", "dqn-a_s0", "dqn-b_s0"]
+
+
+def test_main_rejects_sweeps_with_different_results_dirs(monkeypatch, tmp_path: Path):
+    sweeps = {
+        tmp_path / "a.yaml": SimpleNamespace(
+            name="a", results_dir=tmp_path / "x", run_configs=list
+        ),
+        tmp_path / "b.yaml": SimpleNamespace(
+            name="b", results_dir=tmp_path / "y", run_configs=list
+        ),
+    }
+    monkeypatch.setattr(run_sweep, "load_sweep", lambda path: sweeps[path])
+
+    with pytest.raises(ValueError, match="results_dir"):
+        run_sweep.main([str(tmp_path / "a.yaml"), str(tmp_path / "b.yaml")])

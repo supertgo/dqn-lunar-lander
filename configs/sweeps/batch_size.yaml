@@ -1,5 +1,8 @@
 # Cada variant sobrescreve configs/hyperparameters.yaml e roda com todas as seeds.
 name: batch_size
-seeds:
+seeds: [0, 1, 2]
 variants:
-  - batch_size:
+  - batch_size: 32
+  - batch_size: 64
+  - batch_size: 128
+  - batch_size: 256

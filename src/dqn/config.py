@@ -29,6 +29,12 @@ class Hyperparameters:
     total_timesteps: int
     train_freq: int
     hidden_sizes: tuple[int, ...]
+    # Estabilização opcional (None = desligado). Desligados, não entram no config_id.
+    max_grad_norm: float | None = None  # clipping da norma do gradiente
+    learning_rate_end: float | None = None  # lr decai linearmente até este valor
+
+
+OPTIONAL_HYPERPARAMETERS = ("max_grad_norm", "learning_rate_end")
 
 
 @dataclass(frozen=True)
@@ -63,7 +69,11 @@ class RunConfig:
     def config_id(self) -> str:
         payload = {
             "algo": self.algo,
-            "hyperparameters": self.hyperparameters,
+            "hyperparameters": {
+                k: v
+                for k, v in self.hyperparameters.items()
+                if not (k in OPTIONAL_HYPERPARAMETERS and v is None)
+            },
             "evaluation": asdict(self.evaluation),
         }
 
