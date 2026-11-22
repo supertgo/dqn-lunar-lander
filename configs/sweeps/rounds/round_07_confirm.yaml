@@ -1,5 +1,0 @@
-# Rodada 7 — seeds 5–9 para batch 256 + alvo a cada 500 passos (melhor média da rodada 6).
-name: round_07_confirm
-seeds: [5, 6, 7, 8, 9]
-variants:
-  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, target_update_interval: 500}

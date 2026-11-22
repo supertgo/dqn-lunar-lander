@@ -1,7 +1,0 @@
-# Rodada 10 — configuração final (referência + clipping + decaimento do lr) com 1 milhão de passos,
-# seeds novas 10–29. O lr decai ao longo de todo o treino (até 5e-5 no passo 1M).
-# Comparar com o SB3 padrão também com 1M passos: run_sb3.py --total-timesteps 1000000 --seeds 0 1 2 3 4
-name: round_10_long
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-variants:
-  - {max_grad_norm: 10.0, learning_rate_end: 0.00005, total_timesteps: 1000000}

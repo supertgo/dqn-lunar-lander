@@ -1,6 +1,0 @@
-# Rodada 6 — avaliação final: a vencedora (batch 256 + train_freq 2 + rede 512×512)
-# com 10 seeds novas (10–19), nunca usadas na seleção, para comparar com o SB3 sem viés de seleção.
-name: round_06_final
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-variants:
-  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256}

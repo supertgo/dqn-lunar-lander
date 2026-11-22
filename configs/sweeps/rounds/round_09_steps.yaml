@@ -1,8 +1,0 @@
-# Rodada 9 — número de passos de treinamento (eixo exigido pelo enunciado), na referência,
-# seeds novas 10–29. 300k já está feito nessas seeds.
-name: round_09_steps
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-variants:
-  - {total_timesteps: 100000}
-  - {total_timesteps: 500000}
-  - {total_timesteps: 1000000}

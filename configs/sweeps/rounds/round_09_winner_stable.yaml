@@ -1,5 +1,0 @@
-# Rodada 9 — a vencedora da busca (que colapsou nas seeds novas) com as duas estabilizações.
-name: round_09_winner_stable
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-variants:
-  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, max_grad_norm: 10.0, learning_rate_end: 0.00005}

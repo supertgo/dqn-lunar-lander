@@ -1,7 +1,0 @@
-# Análise extra — melhor checkpoint vs. último modelo, configuração de referência,
-# seeds novas 10–29 (as mesmas da comparação final). Runs separadas do resultado principal.
-name: best_checkpoint_reference
-results_dir: results/extra/best_checkpoint
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-variants:
-  - {}

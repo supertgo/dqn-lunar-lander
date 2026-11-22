@@ -1,5 +1,0 @@
-# Rodada 8 — alvo a cada 500 passos (melhor com 10 seeds de busca) nas seeds novas 10–19.
-name: round_08_fresh
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-variants:
-  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, target_update_interval: 500}

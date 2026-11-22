@@ -1,7 +1,0 @@
-# Rodada 7 — comparação justa com seeds novas (10–19), as mesmas da avaliação final da rodada 6:
-# a referência (sem nenhuma mudança da busca) e a segunda colocada (batch 256 + ε final 0.01).
-name: round_07_fresh
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-variants:
-  - {}
-  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, epsilon_end: 0.01}
