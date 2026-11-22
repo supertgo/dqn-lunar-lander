@@ -84,6 +84,17 @@
    "configs/sweeps/rounds/round_06_explore.yaml"
   ],
   "rationale": "A vencedora roda com 10 seeds novas (10 a 19), que não participaram da seleção. Com isso, o número comparado ao SB3 não herda o viés de escolher a melhor entre muitas configurações. Nos 15 workers restantes, uma última exploração em torno da vencedora: alvo a cada 500 passos, ε final 0.01 e início do treino em 10000 passos.",
+  "conclusion": "Nas seeds novas (10 a 19), a vencedora caiu para 156 de média: seis seeds ficaram entre 194 e 260, mas três ficaram abaixo e a seed 15 colapsou para −379. Pelas curvas, a seed 15 chegou a 248 aos 220 mil passos e despencou no fim do treino, e a seed 12 oscilou entre 264 na última avaliação parcial e 97 na final. Isso é o esquecimento catastrófico típico do DQN: como a avaliação final usa o modelo do último passo, um colapso tardio entra inteiro no número. Com as 20 seeds, o resultado é 200 ± 142, com mediana acima de 230. Contra o SB3 padrão (−39 ± 26), a vantagem continua clara. Na exploração, ε final 0.01 teve o melhor score (243 ± 14) e o alvo a cada 500 passos teve a melhor média (249 ± 38), as duas com 5 seeds.",
+  "status": "done"
+ },
+ {
+  "round": 7,
+  "title": "Comparação justa com seeds novas",
+  "sweeps": [
+   "configs/sweeps/rounds/round_07_fresh.yaml",
+   "configs/sweeps/rounds/round_07_confirm.yaml"
+  ],
+  "rationale": "A vencedora caiu nas seeds novas. Para separar o efeito da busca do viés de seleção, a referência e a segunda colocada (batch 256 + ε final 0.01) rodam nas mesmas seeds 10 a 19. O alvo a cada 500 passos recebe as seeds 5 a 9.",
   "conclusion": null,
   "status": "running"
  }
