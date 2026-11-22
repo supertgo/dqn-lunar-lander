@@ -106,7 +106,7 @@
    "configs/sweeps/rounds/round_08_more.yaml"
   ],
   "rationale": "O alvo a cada 500 passos, a melhor com 10 seeds da busca, roda nas seeds novas 10 a 19. A referência e a vencedora ganham as seeds 20 a 29, ficando com 20 seeds fora da seleção cada. Isso fecha a comparação final com o SB3.",
-  "conclusion": null,
-  "status": "running"
+  "conclusion": "Fim da busca. Nas seeds novas, que não participaram da seleção, nenhuma configuração superou a referência: referência 200.5 ± 65.3 (20 seeds, mediana 220, 64% de pousos); vencedora da busca (batch 256 + train_freq 2 + 512×512) 183.1 ± 141.0 (20 seeds, mediana 209); batch 256 + ε final 0.01 207.6 ± 88.5 (10 seeds); batch 256 + alvo 500 182.9 ± 72.4 (10 seeds), que nas seeds da busca tinha 248.7 ± 29.3. Todas as configurações que pareciam melhores perderam de 35 a 65 pontos nas seeds novas, enquanto a referência ficou estável (191 → 200). Conclusão para o relatório: com 300 mil passos, a variância entre seeds do DQN domina as diferenças entre hiperparâmetros razoáveis, e a busca com poucas seeds mediu sobretudo viés de seleção. A configuração de referência é a escolha final: é a mais estável e a mais barata (cerca de 5 minutos por run, contra 35 a 65 da rede 512×512). Contra o SB3 padrão (−38.6 ± 25.6, 1% de pousos), o DQN ganha com folga em qualquer configuração. Melhoria possível, que muda o protocolo: avaliar o melhor checkpoint em vez do modelo do último passo, já que várias seeds colapsaram no fim do treino.",
+  "status": "done"
  }
 ]
