@@ -95,6 +95,17 @@
    "configs/sweeps/rounds/round_07_confirm.yaml"
   ],
   "rationale": "A vencedora caiu nas seeds novas. Para separar o efeito da busca do viés de seleção, a referência e a segunda colocada (batch 256 + ε final 0.01) rodam nas mesmas seeds 10 a 19. O alvo a cada 500 passos recebe as seeds 5 a 9.",
+  "conclusion": "Resultado central da busca: nas seeds novas (10 a 19), a referência fez 210.7 ± 76, empatada com batch 256 + ε final 0.01 (207.6 ± 88.5) e acima da vencedora (156 ± 195). As melhorias vistas na busca vinham, em boa parte, do viés de seleção: escolher a melhor entre dezenas de configurações avaliadas nas mesmas poucas seeds favorece quem teve sorte. A variância entre seeds do DQN (±75 a ±195) é maior que as diferenças entre as configurações. O alvo a cada 500 passos fechou as seeds 5 a 9 com 248.7 ± 29.3 (10 seeds), a melhor marca nas seeds da busca.",
+  "status": "done"
+ },
+ {
+  "round": 8,
+  "title": "Seeds novas para fechar a comparação",
+  "sweeps": [
+   "configs/sweeps/rounds/round_08_fresh.yaml",
+   "configs/sweeps/rounds/round_08_more.yaml"
+  ],
+  "rationale": "O alvo a cada 500 passos, a melhor com 10 seeds da busca, roda nas seeds novas 10 a 19. A referência e a vencedora ganham as seeds 20 a 29, ficando com 20 seeds fora da seleção cada. Isso fecha a comparação final com o SB3.",
   "conclusion": null,
   "status": "running"
  }
