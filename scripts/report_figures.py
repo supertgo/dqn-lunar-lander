@@ -174,19 +174,22 @@ def _ci_band(curves: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({"step": grid, "mean": vals.mean(axis=0), "lo": lo, "hi": hi})
 
 
-FINAL_1M = "dqn-0bde89"  # configs/sweeps/final.yaml
+FINAL = "dqn-39b3e6"  # configs/sweeps/final.yaml (seeds 30–49)
+STAB_1M = "dqn-0bde89"  # final anterior: referência + estabilizações, 1M passos
 SB3_300K, SB3_1M = "sb3-104563", "sb3-72ba93"
+CONTROL_SEEDS = range(30, 50)  # seeds em que a final e o controle rodaram juntos
 
 
-def fig_final(runs: pd.DataFrame, ref_1m: str | None) -> dict:
-    series = [(FINAL_1M, "DQN (nosso), final", C_REF)]
-    if ref_1m:
-        series.append((ref_1m, "DQN (nosso), sem estabilização", C_ALT))
-    series.append((SB3_1M, "DQN (SB3), padrão", C_SB3))
+def fig_final(runs: pd.DataFrame) -> dict:
+    series = [
+        (FINAL, "DQN (nosso), final", C_REF, CONTROL_SEEDS),
+        (STAB_1M, "DQN (nosso), lr 5e-4 e alvo 1000", C_ALT, CONTROL_SEEDS),
+        (SB3_1M, "DQN (SB3), padrão", C_SB3, range(0, 5)),
+    ]
     out = {}
     fig, ax = plt.subplots(figsize=(4.6, 2.8))
-    for i, (cid, label, color) in enumerate(series):
-        seeds = runs[(runs["config_id"] == cid) & ((runs["seed"] >= FRESH) | (runs["algo"] == "sb3"))]
+    for i, (cid, label, color, seed_range) in enumerate(series):
+        seeds = runs[(runs["config_id"] == cid) & runs["seed"].isin(list(seed_range))]
         curves = mf.load_curves(RESULTS_DIR, [cid])
         curves = curves[curves["seed"].isin(seeds["seed"])]
         b = _ci_band(curves)
@@ -271,9 +274,11 @@ def main() -> None:
 
     fig_sweeps(runs)
     numbers["selection"] = fig_selection(runs)
-    ref_1m = dict(round_ids("round_09_steps"))
-    ref_1m = next((cid for cid, hp in ref_1m.items() if hp["total_timesteps"] == 1000000), None)
-    numbers["final"] = fig_final(runs, ref_1m)
+    numbers["final"] = fig_final(runs)
+    numbers["stab_1m_10_29"] = stats(fresh[(fresh["config_id"] == STAB_1M) & (fresh["seed"] < 30)])
+    for cid in sorted(runs[runs["algo"] == "sb3"]["config_id"].unique()):
+        g = runs[runs["config_id"] == cid]
+        numbers[f"sb3_{int(g['total_timesteps'].iloc[0])}"] = stats(g)
     numbers["sb3_300k"] = stats(runs[runs["config_id"] == SB3_300K])
     numbers["final_300k"] = stats(fresh[fresh["config_id"] == "dqn-78d3c8"])
     w = fresh[fresh["config_id"] == "dqn-3bc15f"]
