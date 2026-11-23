@@ -174,14 +174,18 @@ def _ci_band(curves: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({"step": grid, "mean": vals.mean(axis=0), "lo": lo, "hi": hi})
 
 
-def fig_final(runs: pd.DataFrame, best_stab: str | None) -> dict:
-    sb3 = runs[runs["algo"] == "sb3"]
-    series = [(REF, "DQN (nosso), referência", C_REF)]
-    if best_stab:
-        series.append((best_stab, "DQN (nosso), estabilizado", C_ALT))
+FINAL_1M = "dqn-0bde89"  # configs/sweeps/final.yaml
+SB3_300K, SB3_1M = "sb3-104563", "sb3-72ba93"
+
+
+def fig_final(runs: pd.DataFrame, ref_1m: str | None) -> dict:
+    series = [(FINAL_1M, "DQN (nosso), final", C_REF)]
+    if ref_1m:
+        series.append((ref_1m, "DQN (nosso), sem estabilização", C_ALT))
+    series.append((SB3_1M, "DQN (SB3), padrão", C_SB3))
     out = {}
     fig, ax = plt.subplots(figsize=(4.6, 2.8))
-    for i, (cid, label, color) in enumerate(series + [(sb3["config_id"].iloc[0], "DQN (SB3), padrão", C_SB3)]):
+    for i, (cid, label, color) in enumerate(series):
         seeds = runs[(runs["config_id"] == cid) & ((runs["seed"] >= FRESH) | (runs["algo"] == "sb3"))]
         curves = mf.load_curves(RESULTS_DIR, [cid])
         curves = curves[curves["seed"].isin(seeds["seed"])]
@@ -267,7 +271,13 @@ def main() -> None:
 
     fig_sweeps(runs)
     numbers["selection"] = fig_selection(runs)
-    numbers["final"] = fig_final(runs, best_stab)
+    ref_1m = dict(round_ids("round_09_steps"))
+    ref_1m = next((cid for cid, hp in ref_1m.items() if hp["total_timesteps"] == 1000000), None)
+    numbers["final"] = fig_final(runs, ref_1m)
+    numbers["sb3_300k"] = stats(runs[runs["config_id"] == SB3_300K])
+    numbers["final_300k"] = stats(fresh[fresh["config_id"] == "dqn-78d3c8"])
+    w = fresh[fresh["config_id"] == "dqn-3bc15f"]
+    numbers["wide_stab"] = stats(w)
     numbers["checkpoint"] = fig_checkpoint()
     numbers["n_runs"] = int(len(runs))
     (OUT / "numeros.json").write_text(json.dumps(numbers, indent=1, ensure_ascii=False))
