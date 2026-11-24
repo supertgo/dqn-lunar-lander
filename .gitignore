@@ -239,5 +239,3 @@ results/smoke/
 # Resultados: todos os arquivos leves (config, meta, CSV, JSON) vão para o git;
 # os pesos dos modelos (*.pt acima, *.zip do SB3) ficam fora.
 results/**/*.zip
-# Pacote de entrega (make entrega)
-dqn-lunar-lander.zip

@@ -170,7 +170,6 @@ make sweeps                  # executa os sweeps de hiperparâmetros e o final
 make plots                   # gera as figuras em report/figures/
 make seminar-plots           # gera as figuras e números do relatório em report/figures/
 make all WORKERS=4           # executa os sweeps em até 4 processos e gera as figuras
-make entrega                 # gera dqn-lunar-lander.zip (código, resultados, relatório e PDF) para a submissão
 ```
 
 As runs concluídas são ignoradas automaticamente, então é possível repetir `make sweeps` para retomar execuções interrompidas. `make plots` usa as runs já presentes em `results/runs/` e avisa quais sweeps ainda não têm resultados; use `make all` para executar os experimentos antes de gerar as figuras. `make seminar-plots` executa `scripts/report_figures.py`, que lê as runs versionadas em `results/` e as rodadas em `configs/sweeps/rounds/`.
