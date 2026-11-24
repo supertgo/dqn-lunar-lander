@@ -4,6 +4,47 @@ Trabalho prático de Aprendizado por Reforço (UFMG, 2026/2): implementação do
 do zero (NumPy + PyTorch) no ambiente Lunar Lander do Gymnasium, busca de hiperparâmetros e
 comparação com o DQN do Stable Baselines3. A especificação está em [`docs/RL_TP_Grad.pdf`](docs/RL_TP_Grad.pdf).
 
+## Pacotes e dependências
+
+### Requisitos
+
+- Python 3.11 ou 3.12
+- [`uv`](https://docs.astral.sh/uv/) para criar o ambiente e instalar as dependências travadas
+- `make` para utilizar os comandos automatizados do projeto
+- Linux, Windows ou macOS
+
+As dependências do projeto são declaradas em [`pyproject.toml`](pyproject.toml) e travadas em
+[`uv.lock`](uv.lock). Para instalar o ambiente padrão, execute:
+
+```bash
+make install
+```
+
+### Dependências principais
+
+| Pacote | Uso no projeto |
+|---|---|
+| `gymnasium[box2d]` | Criação e execução do ambiente LunarLander |
+| `torch` | Rede neural, otimização e treinamento do DQN |
+| `numpy` | Manipulação de estados, ações e dados numéricos |
+| `pandas` | Agregação e análise dos resultados das execuções |
+| `matplotlib` | Geração dos gráficos e figuras do relatório |
+| `pyyaml` | Leitura dos arquivos de configuração em YAML |
+
+### Dependências opcionais e de desenvolvimento
+
+| Pacote | Instalação/uso |
+|---|---|
+| `stable-baselines3` | Dependência opcional do baseline DQN em `scripts/run_sb3.py`; instale com `uv sync --locked --extra sb3` |
+| `pytest` | Execução dos testes automatizados |
+| `ruff` | Verificação de estilo e lint |
+
+Os pacotes opcionais de desenvolvimento podem ser instalados junto com o ambiente principal com:
+
+```bash
+uv sync --locked --extra sb3
+```
+
 ## Arquitetura
 
 O trabalho é feito por três pessoas em máquinas diferentes. A arquitetura existe para garantir três coisas:
@@ -110,3 +151,18 @@ não importa bibliotecas proibidas pela spec.
 - `aggregate.py` lê as runs concluídas e gera tabelas em `results/aggregated/`, que fica fora do git.
 - `make_figures.py` lê cada sweep de `configs/sweeps/`, encontra as runs pelo `run_id` e gera as
   figuras em `report/figures/`.
+
+## Executar
+
+Com `uv` instalado, use os comandos do `Makefile`:
+
+```bash
+make install                 # instala as dependências de uv.lock
+make run                     # teste rápido ponta a ponta (sweep smoke)
+make sweeps                  # executa os sweeps de hiperparâmetros e o final
+make plots                   # gera as figuras em report/figures/
+make seminar-plots           # gera as figuras do seminário em docs/figures/
+make all WORKERS=4           # executa os sweeps em até 4 processos e gera as figuras
+```
+
+As runs concluídas são ignoradas automaticamente, então é possível repetir `make sweeps` para retomar execuções interrompidas. `make plots` usa as runs já presentes em `results/runs/` e avisa quais sweeps ainda não têm resultados; use `make all` para executar os experimentos antes de gerar as figuras. `make seminar-plots` executa `scripts/report_figures.py` e exige as configurações locais `round_09_steps.yaml`, `round_09_stability.yaml` e `round_09_winner_stable.yaml` em `configs/sweeps/rounds/`.
