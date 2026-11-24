@@ -1,4 +1,4 @@
-"""Gera as figuras e os números do relatório (docs/figures/ e docs/figures/numeros.json).
+"""Gera as figuras e os números do relatório (report/figures/ e report/figures/numeros.json).
 
 Separação central: seeds 0–9 foram usadas para escolher configurações ("seeds da busca");
 seeds >= 10 nunca participaram da escolha ("seeds novas") e dão a estimativa sem viés de seleção.
@@ -21,7 +21,7 @@ from matplotlib.ticker import FuncFormatter
 
 from dqn.config import CONFIGS_DIR, RESULTS_DIR, ROOT, load_sweep
 
-OUT = ROOT / "docs" / "figures"
+OUT = ROOT / "report" / "figures"
 EXTRA = ROOT / "results" / "extra" / "best_checkpoint"
 FRESH = 10  # seeds >= FRESH não participaram da seleção
 REF = "dqn-b3a10c"

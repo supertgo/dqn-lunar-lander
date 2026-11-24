@@ -1,0 +1,23 @@
+{
+  "run_id": "dqn-b3a10c_s27",
+  "config_id": "dqn-b3a10c",
+  "algo": "dqn",
+  "seed": 27,
+  "eval_seed": 20000,
+  "best_step": 250000,
+  "best_selection_return": 268.4081564243914,
+  "last": {
+    "mean_return": 251.69705309312027,
+    "std_return": 62.94404408680846,
+    "success_rate": 0.92,
+    "mean_length": 261.54,
+    "n_episodes": 100
+  },
+  "best": {
+    "mean_return": 272.6199369287469,
+    "std_return": 22.05432900539323,
+    "success_rate": 0.99,
+    "mean_length": 243.97,
+    "n_episodes": 100
+  }
+}

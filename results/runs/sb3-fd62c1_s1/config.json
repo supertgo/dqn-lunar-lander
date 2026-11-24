@@ -1,0 +1,17 @@
+{
+  "algo": "sb3",
+  "hyperparameters": {
+    "total_timesteps": 2000000
+  },
+  "evaluation": {
+    "env_id": "LunarLander-v3",
+    "eval_freq": 10000,
+    "eval_episodes": 10,
+    "final_eval_episodes": 100,
+    "eval_seed": 10000,
+    "solved_threshold": 200
+  },
+  "seed": 1,
+  "config_id": "sb3-fd62c1",
+  "run_id": "sb3-fd62c1_s1"
+}

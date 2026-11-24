@@ -1,0 +1,9 @@
+# Rodada 2 — confirmação: seeds 3 e 4 para as líderes que só tinham 3 seeds.
+name: round_02_confirm
+seeds: [3, 4]
+variants:
+  - {batch_size: 64, train_freq: 2}
+  - {buffer_size: 10000}
+  - {epsilon_decay_steps: 10000}
+  - {learning_rate: 0.001}
+  - {buffer_size: 300000}

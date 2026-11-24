@@ -1,0 +1,7 @@
+# Análise extra — mesmo estudo para a vencedora da busca (batch 256 + train_freq 2 + 512×512),
+# que teve colapsos no fim do treino nas seeds novas 10–19.
+name: best_checkpoint_winner
+results_dir: results/extra/best_checkpoint
+seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+variants:
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256}

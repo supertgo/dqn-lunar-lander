@@ -67,8 +67,10 @@ dqn-lunar-lander/
 │   └── sweeps/                  # um arquivo por eixo da busca
 │       ├── learning_rate.yaml  gamma.yaml  buffer_size.yaml
 │       ├── batch_size.yaml  target_update.yaml  epsilon.yaml
-│       ├── final.yaml           # configuração final: referência + clipping + decaimento do lr
-│       └── smoke.yaml           # teste rápido de ponta a ponta
+│       ├── final.yaml           # configuração final (1M passos, seeds 30–49)
+│       ├── smoke.yaml           # teste rápido de ponta a ponta
+│       ├── rounds/              # rodadas 1 a 14 da busca (a rodada 0 são os sweeps de um fator acima)
+│       └── extra/               # análise extra do melhor checkpoint
 ├── src/dqn/                     # pacote do DQN — nunca importa SB3/RLlib/Keras-RL
 │   ├── network.py               # rede Q
 │   ├── replay_buffer.py         # replay buffer
@@ -82,10 +84,15 @@ dqn-lunar-lander/
 │   ├── run_sweep.py             # expande sweep × seeds e roda em paralelo
 │   ├── run_sb3.py               # baseline SB3 (único lugar que importa SB3)
 │   ├── aggregate.py             # junta results/runs/ em tabelas
-│   └── make_figures.py          # gera as figuras do relatório
-├── results/runs/<run_id>/       # resultados versionados (só arquivos leves)
+│   ├── make_figures.py          # uma figura por sweep de um fator
+│   ├── report_figures.py        # figuras e números do relatório (report/figures/)
+│   └── eval_checkpoints.py      # análise extra: último modelo vs. melhor checkpoint
+├── results/
+│   ├── runs/<run_id>/           # todas as runs da busca, da final e do SB3 (só arquivos leves)
+│   ├── extra/best_checkpoint/   # runs da análise do melhor checkpoint
+│   └── search/                  # diário da busca: rounds.json, logs e resumo da fila final
 ├── tests/                       # testes dos componentes + regra de imports
-├── report/                      # relatório LaTeX (main.tex + figures/)
+├── report/                      # relatório LaTeX (main.tex, referencias.bib, figures/)
 └── docs/                        # especificação do trabalho
 ```
 
@@ -161,8 +168,32 @@ make install                 # instala as dependências de uv.lock
 make run                     # teste rápido ponta a ponta (sweep smoke)
 make sweeps                  # executa os sweeps de hiperparâmetros e o final
 make plots                   # gera as figuras em report/figures/
-make seminar-plots           # gera as figuras do seminário em docs/figures/
+make seminar-plots           # gera as figuras e números do relatório em report/figures/
 make all WORKERS=4           # executa os sweeps em até 4 processos e gera as figuras
+make entrega                 # gera dqn-lunar-lander.zip (código, resultados, relatório e PDF) para a submissão
 ```
 
-As runs concluídas são ignoradas automaticamente, então é possível repetir `make sweeps` para retomar execuções interrompidas. `make plots` usa as runs já presentes em `results/runs/` e avisa quais sweeps ainda não têm resultados; use `make all` para executar os experimentos antes de gerar as figuras. `make seminar-plots` executa `scripts/report_figures.py` e exige as configurações locais `round_09_steps.yaml`, `round_09_stability.yaml` e `round_09_winner_stable.yaml` em `configs/sweeps/rounds/`.
+As runs concluídas são ignoradas automaticamente, então é possível repetir `make sweeps` para retomar execuções interrompidas. `make plots` usa as runs já presentes em `results/runs/` e avisa quais sweeps ainda não têm resultados; use `make all` para executar os experimentos antes de gerar as figuras. `make seminar-plots` executa `scripts/report_figures.py`, que lê as runs versionadas em `results/` e as rodadas em `configs/sweeps/rounds/`.
+
+## Reproduzir os resultados do relatório
+
+Todas as runs usadas no relatório estão em `results/` (sem os pesos dos modelos), então as
+figuras e tabelas podem ser regeneradas sem treinar nada: `make seminar-plots`.
+
+Para treinar de novo:
+
+```bash
+# configuração final: 20 seeds (30–49), 1M passos, ~20–30 min por run em 1 núcleo
+uv run --locked python scripts/run_sweep.py configs/sweeps/final.yaml --workers 4
+# SB3 padrão com o mesmo orçamento
+uv run --locked --extra sb3 python scripts/run_sb3.py --total-timesteps 1000000 --seeds 0 1 2 3 4
+# uma rodada específica da busca, por exemplo o estudo do número de passos
+uv run --locked python scripts/run_sweep.py configs/sweeps/rounds/round_09_steps.yaml --workers 4
+# análise extra do melhor checkpoint
+uv run --locked python scripts/run_sweep.py configs/sweeps/extra/*.yaml --workers 4
+uv run --locked --extra sb3 python scripts/run_sb3.py --seeds 0 1 2 3 4 --results-dir results/extra/best_checkpoint
+uv run --locked --extra sb3 python scripts/eval_checkpoints.py results/extra/best_checkpoint
+```
+
+Os ids são determinísticos, então uma run refeita cai no mesmo diretório e dá o mesmo
+resultado. A análise extra refez 35 runs e reproduziu exatamente os números originais.

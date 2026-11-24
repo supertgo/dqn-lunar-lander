@@ -1,0 +1,269 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[hidelinks]{hyperref}
+
+\renewcommand{\IEEEkeywordsname}{Palavras-chave}
+
+% Figura com fallback: compila mesmo sem o PDF gerado por scripts/report_figures.py
+\newcommand{\figfile}[3]{%
+  \IfFileExists{figures/#1.pdf}%
+    {\includegraphics[width=#2]{figures/#1.pdf}}%
+    {\fbox{\parbox[c][#3][c]{\dimexpr#2-2\fboxsep-2\fboxrule\relax}{\centering
+      \textcolor{red}{\small figura \texttt{#1.pdf} pendente}}}}}
+
+\algrenewcommand\algorithmicrequire{\textbf{Entrada:}}
+\algrenewcommand\algorithmicensure{\textbf{Saída:}}
+\floatname{algorithm}{Algoritmo}
+
+\begin{document}
+
+\title{Trabalho Prático: Deep Q-Network no Lunar Lander}
+
+\author{
+\IEEEauthorblockN{Beatriz Camilly Gulart Pereira}
+\IEEEauthorblockA{DCC -- UFMG\\Matrícula: [matrícula]\\Belo Horizonte, Brasil}
+\and
+\IEEEauthorblockN{Maria Eduarda Nunes e Carvalho\\de Vasconcelos Costa}
+\IEEEauthorblockA{DCC -- UFMG\\Matrícula: [matrícula]\\Belo Horizonte, Brasil}
+\and
+\IEEEauthorblockN{Thiago Roberto Magalhães}
+\IEEEauthorblockA{DCC -- UFMG\\Matrícula: 2022066051\\Belo Horizonte, Brasil}
+}
+
+\maketitle
+
+\begin{abstract}
+Este trabalho implementa o \textit{Deep Q-Network} (DQN), com NumPy e PyTorch, para o ambiente Lunar Lander do Gymnasium. Descrevemos os elementos essenciais do algoritmo (rede Q, rede alvo, \textit{replay buffer}, política $\varepsilon$-\textit{greedy} com decaimento, treinamento e avaliação) e a infraestrutura usada para tornar os experimentos reprodutíveis. Investigamos o efeito de sete hiperparâmetros em uma busca em rodadas, com 719 execuções, e validamos as configurações escolhidas em sementes que não participaram da escolha, o que revelou um forte viés de seleção na busca. Com \textit{clipping} do gradiente e decaimento da taxa de aprendizado contra o colapso tardio do treino, 1 milhão de passos e um ajuste fino nesse orçamento, a configuração final atingiu retorno médio de 269 (IC de 95\%: [263, 274]), com 92\% de pousos bem-sucedidos, contra $-12$ do DQN do Stable Baselines3 na configuração padrão com o mesmo orçamento.
+\end{abstract}
+
+\section{Introdução}
+O \textit{Deep Q-Network} (DQN)~\cite{mnih2015} combina o Q-\textit{learning} com redes neurais profundas para estimar valores de ação em espaços de estados contínuos ou de alta dimensão. Dois mecanismos o estabilizam: o \textit{replay buffer}, que reutiliza transições passadas e reduz a correlação entre amostras, e a rede alvo, que mantém fixo por alguns passos o alvo de aprendizado. Apesar de conceitualmente simples, o DQN é sensível a seus hiperparâmetros~\cite{henderson2018}, o que torna a busca sistemática e a análise estatística dos resultados parte central do trabalho.
+
+O problema abordado é o Lunar Lander do Gymnasium~\cite{gymnasium}, no qual o agente controla uma nave em queda até um pouso seguro na zona demarcada. A observação é um vetor de oito dimensões (posição, velocidades linear e angular, ângulo e dois indicadores de contato das pernas) e há quatro ações discretas: não fazer nada ou acionar o motor principal, o lateral esquerdo ou o lateral direito. A recompensa penaliza o uso de combustível, a inclinação e o desvio da zona de pouso, e concede bônus ao toque das pernas e ao pouso, ou penalidade grande em caso de colisão. Conforme a documentação do ambiente, um retorno de pelo menos 200 pontos por episódio caracteriza uma solução.
+
+Nossa solução é um DQN implementado apenas com NumPy e PyTorch, sem bibliotecas que ofereçam o algoritmo pronto. Os experimentos cobrem a busca sobre taxa de aprendizado, fator de desconto, tamanho do \textit{buffer}, tamanho do \textit{batch}, frequência de atualização da rede alvo, parâmetros de $\varepsilon$ e número de passos de treinamento, seguida da comparação com o DQN do Stable Baselines3 (SB3)~\cite{sb3} na configuração padrão. As Seções~\ref{sec:impl} e~\ref{sec:aval} apresentam a implementação e a avaliação experimental, e a Seção~\ref{sec:concl} conclui o trabalho.
+
+\section{Implementação}
+\label{sec:impl}
+O código usa Python 3.12, PyTorch 2.15 (CPU) e NumPy 2.5 para o agente, e Gymnasium 1.4 com Box2D para o ambiente (\texttt{LunarLander-v3}). As dependências são travadas com \texttt{uv} (arquivo \texttt{uv.lock} versionado), de modo que o ambiente é idêntico em qualquer máquina. O pacote \texttt{src/dqn} nunca importa SB3, RLlib ou Keras-RL, o que é verificado por um teste automatizado; o SB3 aparece apenas em \texttt{scripts/run\_sb3.py}, como dependência opcional. O Algoritmo~\ref{alg:dqn} resume o treinamento e as subseções seguintes detalham cada componente.
+
+\begin{algorithm}[t]
+\caption{DQN implementado (resumo)}
+\label{alg:dqn}
+\small
+\begin{algorithmic}[1]
+\Require hiperparâmetros $(\alpha,\gamma,|\mathcal{D}|,B,C,\varepsilon_0,\varepsilon_{\min},T_\varepsilon,T,T_0,k)$
+\State inicializa $Q_\theta$, $\theta^-\!\leftarrow\!\theta$ e o \textit{buffer} $\mathcal{D}$
+\For{cada passo $t=1,\dots,T$}
+  \State escolhe $a_t$ por $\varepsilon_t$-\textit{greedy} sobre $Q_\theta(s_t,\cdot)$
+  \State executa $a_t$; armazena $(s_t,a_t,r_t,s_{t+1},d_t)$ em $\mathcal{D}$
+  \If{$t\ge T_0$ \textbf{e} $t \bmod k = 0$}
+    \State amostra $B$ transições de $\mathcal{D}$ e atualiza $\theta$ por (\ref{eq:loss})
+  \EndIf
+  \If{$t \bmod C = 0$} \State $\theta^-\!\leftarrow\!\theta$ \EndIf
+  \If{$t \bmod T_{\text{aval}}=0$} \State avalia a política gulosa e registra métricas \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Rede Q, rede alvo e atualização}
+A rede Q \texttt{(network.py)} é um perceptron multicamadas que recebe o vetor de oito dimensões e retorna um valor $Q_\theta(s,a)$ para cada uma das quatro ações, em uma única passada. Na configuração de referência, a rede tem duas camadas ocultas de 256 unidades com ativação ReLU; o número e a largura das camadas são configuráveis (\texttt{hidden\_sizes}). A rede alvo $Q_{\theta^-}$ é uma cópia sem gradiente, sincronizada com a rede principal a cada $C$ passos de ambiente (cópia direta dos pesos) pelo método \texttt{sync\_target} do \texttt{DQNAgent}. Para cada transição amostrada, o alvo de TD é
+\begin{equation}
+y = r + \gamma\,(1-d)\,\max_{a'} Q_{\theta^-}(s',a'),
+\label{eq:target}
+\end{equation}
+em que $d$ indica fim de episódio por estado terminal (e não por truncamento por tempo). A rede principal minimiza
+\begin{equation}
+\mathcal{L}(\theta)=\mathbb{E}_{(s,a,r,s',d)\sim\mathcal{D}}\big[\ell\big(y-Q_\theta(s,a)\big)\big],
+\label{eq:loss}
+\end{equation}
+com $\ell$ a perda de Huber e otimizador Adam. As atualizações começam após $T_0$ passos (\texttt{learning\_starts}), para que o \textit{buffer} já tenha transições variadas, e ocorrem uma vez a cada $k$ passos de ambiente (\texttt{train\_freq}). Dois mecanismos opcionais de estabilização, desligados na referência e ligados na configuração final, foram avaliados na Seção~\ref{sec:estab}: o \textit{clipping} da norma do gradiente (\texttt{max\_grad\_norm}) e o decaimento linear da taxa de aprendizado de $\alpha$ até $\alpha_{\text{fim}}$ ao longo do treino (\texttt{learning\_rate\_end}).
+
+\subsection{\textit{Replay buffer} e exploração $\varepsilon$-\textit{greedy}}
+O \textit{buffer} \texttt{(replay\_buffer.py)} é uma lista circular de capacidade $|\mathcal{D}|$: cada transição é guardada como uma tupla com cópias dos estados e, quando a lista enche, a nova transição sobrescreve a mais antiga. A amostragem é uniforme, com reposição entre lotes e sem reposição dentro de cada lote; as transições sorteadas são empilhadas em arrays NumPy, um por campo, para formar o lote. A política \texttt{(exploration.py)} escolhe uma ação aleatória com probabilidade $\varepsilon_t$ e a ação de maior $Q_\theta$ caso contrário. O valor de $\varepsilon$ decai linearmente de $\varepsilon_0$ a $\varepsilon_{\min}$ em $T_\varepsilon$ passos:
+\begin{equation}
+\varepsilon_t=\max\!\Big(\varepsilon_{\min},\ \varepsilon_0-(\varepsilon_0-\varepsilon_{\min})\,\tfrac{t}{T_\varepsilon}\Big).
+\end{equation}
+
+\subsection{Treinamento e avaliação}
+O laço de treino \texttt{(train.py)} segue o Algoritmo~\ref{alg:dqn}: interage com o ambiente, armazena transições, chama \texttt{agent.update} e, periodicamente, executa a avaliação, registrando métricas por episódio de treino e por avaliação. A avaliação \texttt{(evaluate.py)} recebe qualquer função \texttt{policy\_fn(obs) $\rightarrow$ ação} e executa a política gulosa ($\varepsilon=0$) em episódios com sementes fixas, definidos em \texttt{evaluation.yaml}: o episódio $i$ usa a semente $s_{\text{aval}}+i$, com $s_{\text{aval}}=10000$. Como a mesma função serve ao nosso agente e ao SB3, ambos enfrentam os mesmos episódios e são medidos pelos mesmos critérios.
+
+\subsection{Configuração e reprodutibilidade}
+Uma execução é definida por (algoritmo, hiperparâmetros, protocolo de avaliação, semente). O arquivo \texttt{hyperparameters.yaml} guarda a configuração de referência, e o protocolo fica em \texttt{evaluation.yaml}, separado por não fazer parte da busca. Cada \textit{sweep} é um YAML com sementes e variantes que sobrescrevem parte da referência. Os identificadores são determinísticos: \texttt{config\_id} $=$ algoritmo $+$ \textit{hash} de tudo menos a semente, e \texttt{run\_id} $=$ \texttt{config\_id}\texttt{\_s}$\langle$semente$\rangle$. Assim, a mesma execução feita em máquinas diferentes cai no mesmo diretório, configurações repetidas entre \textit{sweeps} rodam uma única vez e \textit{sweeps} interrompidos podem ser retomados. Cada execução grava configuração, metadados (\textit{commit}, versões), métricas de treino e de avaliação e um \texttt{summary.json}, cuja existência marca a execução como concluída. Todas as figuras e números deste relatório são gerados por \texttt{scripts/report\_figures.py} a partir desses arquivos. A suíte de testes automatizados (\texttt{pytest}, executada em integração contínua) cobre a rede, o agente, o \textit{buffer}, a exploração, a avaliação, a configuração e os \textit{scripts} de busca.
+
+\section{Avaliação Experimental}
+\label{sec:aval}
+
+\subsection{Protocolo e métricas}
+A busca treina cada execução por $T=300$ mil passos de ambiente, exceto no estudo do próprio $T$; a configuração final e a comparação com o SB3 usam 1 milhão de passos (Seção~\ref{sec:final}). A cada 10 mil passos, a política gulosa é avaliada em 10 episódios, o que produz as curvas de aprendizado. Ao fim do treino, o modelo do último passo é avaliado em 100 episódios; o episódio $i$ usa a semente $10000+i$, a mesma para todas as configurações e para o SB3. Reportamos o \textbf{retorno médio} dessa avaliação final e a \textbf{taxa de sucesso}, fração de episódios com retorno $\ge 200$. Seguindo as recomendações para estatística em aprendizado por reforço~\cite{agarwal2021,patterson2023}, a unidade de análise é a semente de treino, e não o episódio: cada semente contribui com um número (a média dos seus 100 episódios), e apresentamos a média entre sementes com intervalo de confiança (IC) de 95\% por \textit{bootstrap} percentil. Os experimentos rodaram em uma máquina de 28 \textit{threads}, com uma \textit{thread} por execução e até 25 execuções simultâneas; cada execução da configuração de referência leva cerca de 5 minutos. Ao todo foram 719 execuções, mais 35 da análise do melhor \textit{checkpoint} (Seção~\ref{sec:ckpt}).
+
+\subsection{Metodologia da busca}
+A busca foi feita em rodadas. A rodada inicial variou um hiperparâmetro por vez a partir da referência (Tabela~\ref{tab:sweeps}), com 3 sementes. As rodadas seguintes partiram das melhores configurações: combinaram valores promissores, exploraram eixos novos (arquitetura da rede, frequência de atualização $k$, início do treino $T_0$) e deram mais sementes às líderes. Ao todo foram 15 rodadas: as 10 primeiras com 300 mil passos e as 5 últimas em torno da configuração com 1 milhão de passos (Seção~\ref{sec:final}). A escolha usou o \textit{score} média $-$ desvio-padrão entre sementes, que penaliza configurações instáveis.
+
+Um cuidado foi decisivo: separar as sementes usadas para \textbf{escolher} configurações (0 a 9, ``sementes da busca'') das usadas para \textbf{medir} o resultado (10 a 29, ``sementes novas''). Quando se escolhe a melhor entre dezenas de configurações avaliadas nas mesmas poucas sementes, a escolhida tende a ser a que teve sorte, e seu desempenho nessas sementes superestima o real. Só as sementes novas dão uma estimativa sem esse viés de seleção. No ajuste final, com 1 milhão de passos, a separação foi levada adiante em três grupos: sementes 10 a 19 para escolher, 20 a 29 para confirmar e 30 a 49 para o teste final, com a configuração anterior rodando nas mesmas sementes como controle.
+
+\begin{table}[t]
+\centering
+\caption{Busca de um fator por vez a partir da referência (em negrito). Entre parênteses, o retorno médio da avaliação final com as sementes 0 a 2; para $T$, com as sementes novas 10 a 29.}
+\label{tab:sweeps}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lp{6.1cm}@{}}
+\toprule
+Hiperparâmetro & Valores testados (retorno) \\
+\midrule
+$\alpha$ & $10^{-4}$ ($-4$), $\mathbf{5\cdot10^{-4}}$ (219), $10^{-3}$ (229), $3\cdot10^{-3}$ (211) \\
+$\gamma$ & 0,9 ($-109$), 0,95 ($-76$), \textbf{0,99} (219), 0,999 ($-46$) \\
+$|\mathcal{D}|$ & 10k (204), 50k (176), \textbf{100k} (219), 300k (212) \\
+$B$ & 32 (146), 64 (239), \textbf{128} (219), 256 (196) \\
+$C$ & 250 (194), \textbf{1k} (219), 5k (194), 10k (82) \\
+$T_\varepsilon$ / $\varepsilon_{\min}$ & 10k/0,05 (219), \textbf{50k/0,05} (219), 150k/0,05 (203), 50k/0,01 (90) \\
+$T$ & 100k (37), \textbf{300k} (200), 500k (230), 1M (248) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Resultados da busca}
+A Figura~\ref{fig:sweeps} mostra o retorno final de cada valor testado. Os demais parâmetros fixos da referência são $\varepsilon_0=1$, $T_0=5000$, $k=4$ e rede $256\times256$.
+
+\begin{figure*}[t]
+\centering
+\figfile{fig-sweeps}{\textwidth}{6cm}
+\caption{Retorno da avaliação final por valor de cada hiperparâmetro. Pontos cinza: sementes; marcador e barra: média e IC de 95\% por \textit{bootstrap}; azul: referência. Os seis primeiros painéis usam as sementes 0 a 2; os dois últimos, as 20 sementes novas (10 a 29). A linha tracejada marca o limiar de 200 pontos.}
+\label{fig:sweeps}
+\end{figure*}
+
+\paragraph{Taxa de aprendizado e $\gamma$}
+O fator de desconto foi o eixo mais sensível. Com $\gamma\le0{,}95$, o horizonte efetivo $1/(1-\gamma)$ fica em 10 a 20 passos, curto demais para associar o acionamento dos motores ao bônus do pouso, que chega centenas de passos depois; o agente aprende a pairar e nunca pousa. Com $\gamma=0{,}999$ o horizonte passa de mil passos, os alvos de TD ficam grandes e ruidosos, e o treino diverge em parte das sementes ($-46\pm160$). Na taxa de aprendizado, $10^{-4}$ é lenta demais para o orçamento de 300 mil passos (retorno perto de zero), enquanto $10^{-3}$ e $3\cdot10^{-3}$ aprendem, mas com variância entre sementes bem maior que $5\cdot10^{-4}$.
+\paragraph{\textit{Buffer} e $\varepsilon$}
+O tamanho do \textit{buffer} teve efeito pequeno entre 10k e 300k: um \textit{buffer} pequeno descarta experiências antigas mais cedo, o que reduz a diversidade das amostras, mas também tira do lote transições de políticas já superadas. Na exploração, decair $\varepsilon$ em 10k ou 50k passos deu o mesmo resultado médio, e decaimentos mais lentos (150k) gastam passos demais explorando. Reduzir $\varepsilon_{\min}$ para 0,01 piorou bastante o resultado com 3 sementes (90, com desvio de 75), mas, combinado com outros ajustes nas rodadas seguintes, o mesmo valor teve bom desempenho (243 em 5 sementes), o que indica que parte da queda inicial foi ruído de poucas sementes.
+\paragraph{\textit{Batch}, rede alvo e passos de treinamento}
+Lotes pequenos (32) dão gradientes ruidosos e foram os piores; entre 64 e 256 as diferenças ficaram dentro do ruído. Atualizar a rede alvo raramente ($C=10$k) atrasa a propagação dos valores e piorou muito o resultado (82), enquanto $C$ entre 250 e 5k funcionou. O número de passos teve o efeito mais claro e monótono: 100k passos são insuficientes (37), e o retorno sobe de 200 (300k) para 230 (500k) e 248 (1M), com variância cada vez menor. Por isso a configuração final usa 1M passos (Seção~\ref{sec:final}); o restante da busca foi feito com 300k, que é 3 vezes mais barato por execução.
+
+\paragraph{Viés de seleção}
+As rodadas seguintes encontraram configurações que, nas sementes da busca, superavam a referência com folga, como \textit{batch} 256 com $k=2$ e rede $512\times512$ ($244{,}5\pm23{,}2$ em 10 sementes, contra $190{,}7\pm81{,}6$ da referência). Nas sementes novas, porém, todas caíram e nenhuma superou a referência (Tabela~\ref{tab:selecao} e Figura~\ref{fig:selecao}), enquanto a própria referência ficou estável. A conclusão é que, com 300 mil passos, a variância entre sementes do DQN é maior que as diferenças entre hiperparâmetros razoáveis, e a busca com poucas sementes mediu sobretudo sorte. A queda das configurações maiores tem ainda uma causa específica: elas colapsam com mais frequência no fim do treino (Seção~\ref{sec:ckpt}).
+
+\begin{table}[t]
+\centering
+\caption{Configurações escolhidas na busca, reavaliadas em sementes novas. Retorno médio [IC 95\%] e número de sementes.}
+\label{tab:selecao}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Configuração & Sementes da busca & Sementes novas \\
+\midrule
+Referência & 191 [116, 237] (5) & 201 [170, 226] (20) \\
+$B$ 256, $k$ 2, $512^2$, $\varepsilon_{\min}$ 0,01 & 243 [233, 256] (5) & 208 [148, 248] (10) \\
+$B$ 256, $k$ 2, $512^2$ & 245 [229, 256] (10) & 183 [115, 228] (20) \\
+$B$ 256, $k$ 2, $512^2$, $C$ 500 & 249 [230, 264] (10) & 183 [138, 222] (10) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figfile{fig-selecao}{\columnwidth}{4.2cm}
+\caption{Viés de seleção: retorno médio (IC 95\%) nas sementes usadas para escolher a configuração (cinza) e em sementes novas (azul).}
+\label{fig:selecao}
+\end{figure}
+
+\subsection{Estabilização do treino}
+\label{sec:estab}
+Como o principal problema observado foi o colapso tardio, testamos, sempre nas sementes novas 10 a 29, dois mecanismos padrão de estabilização: o \textit{clipping} da norma do gradiente em 10 (o valor padrão do SB3) e o decaimento linear da taxa de aprendizado de $5\cdot10^{-4}$ até $5\cdot10^{-5}$ ao longo do treino. Isolados, ajudaram pouco: $207{,}5\pm44{,}2$ com \textit{clipping} e $186{,}9\pm77{,}3$ com decaimento, contra $200{,}5\pm65{,}3$ da referência. Juntos, elevaram o retorno para $223{,}4$ [210, 236] e reduziram o desvio-padrão à metade (31), com a pior semente em 165 em vez de 5. Na configuração com rede $512\times512$, que colapsava, os dois juntos levaram o retorno de $156\pm195$ para $241{,}5$ [222, 256] (10 sementes novas). O decaimento reduz o tamanho dos passos justamente quando a política já é boa, e o \textit{clipping} impede que um lote com erro de TD grande desfaça o que foi aprendido.
+
+\subsection{Configuração final e curva de aprendizado}
+\label{sec:final}
+Os dois achados de maior efeito foram juntados primeiro: a referência com as duas estabilizações e 1 milhão de passos atingiu $252{,}0$ [242, 261] nas 20 sementes novas, com desvio-padrão de 22. Com 1M passos, as estabilizações quase não mudam a média em relação à referência sem elas ($248{,}3$), mas reduzem o desvio-padrão de 40 para 22 e elevam a pior semente de 138 para 196. A rede $512\times512$ estabilizada, que parecia promissora com 10 sementes, ficou em $236{,}7$ [221, 250] com 20 sementes em 300k passos, com custo cerca de 5 vezes maior por execução, e não foi adotada.
+
+Como as conclusões da busca de 300k passos poderiam não valer com 1M, refizemos uma busca curta nesse orçamento, com seleção, confirmação e teste em sementes separadas. Primeiro, dez variações de um fator por vez (sementes 10 a 19): só a taxa de aprendizado inicial $10^{-3}$ (ainda decaindo até $5\cdot10^{-5}$) e a rede alvo a cada 2000 passos superaram a configuração de partida; $\gamma=0{,}995$, $C=500$ e \textit{clipping} em 1 a pioraram. Em seguida, as duas foram confirmadas em sementes novas (20 a 29): $277{,}6$ [273, 282] e $263{,}2$ [251, 273]. Por fim, a combinação das duas foi testada nas sementes 30 a 49, que nunca foram usadas para escolher nada, junto com a configuração de partida nas mesmas sementes como controle: $268{,}8$ [263, 274] contra $252{,}1$ [240, 264]. Comparando semente a semente, a diferença é de $16{,}8$ pontos [5, 29], e a combinação vence em 14 das 20 sementes. Com a taxa de aprendizado decaindo, um valor inicial maior acelera o início do treino sem a instabilidade que $10^{-3}$ mostrou com taxa constante; e a rede alvo mais lenta dá alvos mais estáveis quando o treino é longo. Essa é a configuração final (Tabela~\ref{tab:final}). Ela também é mais rápida: cerca de 22 minutos por execução, contra 30. Dobrar o orçamento para 2M passos não ajudou ($256{,}4\pm35{,}7$, sementes 10 a 29), e por isso mantivemos 1M.
+
+A Figura~\ref{fig:final} mostra a evolução do retorno ao longo do treino.
+
+\begin{table}[t]
+\centering
+\caption{Configuração final.}
+\label{tab:final}
+\small
+\begin{tabular}{@{}lc@{\hspace{1.2em}}lc@{}}
+\toprule
+Parâmetro & Valor & Parâmetro & Valor \\
+\midrule
+$\alpha$ & $10^{-3}\!\rightarrow\!5\cdot10^{-5}$ & $B$ & 128 \\
+$\gamma$ & 0,99 & $C$ & 2000 \\
+$|\mathcal{D}|$ & 100k & $\varepsilon_0/\varepsilon_{\min}/T_\varepsilon$ & 1/0,05/50k \\
+$T$ & 1M & $T_0$ / $k$ & 5000 / 4 \\
+Rede & $256\times256$ & \textit{clipping} & 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparação com o Stable Baselines3}
+O DQN do SB3 2.9.2~\cite{sb3} foi treinado na configuração padrão, com o mesmo número de passos e o mesmo protocolo de avaliação, em 5 sementes. A Tabela~\ref{tab:sb3} e a Figura~\ref{fig:final} comparam os dois com 1 milhão de passos; a tabela também traz os resultados com 300 mil passos.
+
+\begin{table}[t]
+\centering
+\caption{Nosso DQN \textit{vs.} SB3 padrão. Média entre sementes [IC 95\%]; sementes novas para o nosso DQN.}
+\label{tab:sb3}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Método ($T$) & Sementes & Retorno $\uparrow$ & Sucesso (\%) $\uparrow$ \\
+\midrule
+DQN (nosso), final (1M) & 20 & 269 [263, 274] & 92 \\
+DQN (SB3), padrão (1M) & 5 & $-12$ [$-18$, $-5$] & 0 \\
+DQN (SB3), padrão (2M) & 5 & 59 [$-15$, 137] & 19 \\
+\midrule
+DQN (nosso), estabilizado (300k) & 20 & 223 [210, 236] & 78 \\
+DQN (nosso), referência (300k) & 20 & 201 [170, 226] & 64 \\
+DQN (SB3), padrão (300k) & 5 & $-39$ [$-57$, $-18$] & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figfile{fig-final}{\columnwidth}{4.2cm}
+\caption{Curvas de avaliação com 1 milhão de passos: nosso DQN final e a configuração de partida do ajuste fino ($\alpha_0=5\cdot10^{-4}$, $C=1000$), ambos nas sementes 30 a 49, e o SB3 padrão (5 sementes). Média entre sementes e IC de 95\%.}
+\label{fig:final}
+\end{figure}
+
+Os dois são o mesmo algoritmo, com a mesma perda de Huber, o mesmo otimizador Adam e alvo de TD equivalente, mas o SB3 padrão não chega a pousar nem com 1 milhão de passos. A diferença está nos valores padrão, ajustados para outros problemas, e a nossa busca mede o efeito de vários deles diretamente: a taxa de aprendizado padrão ($10^{-4}$) teve retorno perto de zero no nosso agente; a rede alvo atualizada a cada 10 mil passos teve 82; e o \textit{batch} de 32 teve 146. Somam-se uma rede menor ($64\times64$) e uma exploração mais curta (até 30 mil passos, 10\% do treino). Com tantos fatores desfavoráveis ao mesmo tempo, o SB3 aprende devagar: melhora de $-39$ para $-12$ ao passar de 300 mil para 1 milhão de passos, mas não pousa em nenhum episódio; só com 2 milhões de passos começa a pousar (59 [$-15$, 137], 19\% de pousos), e mesmo escolhendo o melhor momento do seu treino de 300 mil passos (Seção~\ref{sec:ckpt}) o retorno fica em $-9$. As semelhanças aparecem no início: até cerca de 50 mil passos as duas curvas sobem juntas, enquanto as políticas ainda são quase aleatórias; a partir daí, a nossa configuração passa de 200 pontos antes de 200 mil passos, enquanto o SB3 oscila em torno de zero.
+
+\subsection{Análise extra: melhor \textit{checkpoint}}
+\label{sec:ckpt}
+Pelas curvas, várias sementes atingem bons resultados e pioram no fim do treino, o esquecimento catastrófico típico do DQN. Na configuração com rede $512\times512$ sem estabilização, uma semente chegou a 248 aos 220 mil passos e terminou em $-379$. Como o protocolo avalia o modelo do último passo, um colapso tardio entra inteiro no resultado. Para medir esse efeito sem alterar o protocolo principal, o treino passou a guardar também o modelo com a melhor avaliação intermediária. Repetimos as execuções da referência (sementes 10 a 29), da configuração $512\times512$ (sementes 10 a 19) e do SB3, e avaliamos o último modelo e o melhor \textit{checkpoint} em 100 episódios novos (sementes $20000+i$), diferentes dos usados para escolher o \textit{checkpoint}. As execuções repetidas reproduziram exatamente os resultados originais do último modelo, o que confirma a reprodutibilidade da implementação.
+
+\begin{figure}[t]
+\centering
+\figfile{fig-checkpoint}{\columnwidth}{4.2cm}
+\caption{Último modelo \textit{vs.} melhor \textit{checkpoint}, avaliados em 100 episódios novos. Linhas cinza: sementes; marcadores: média e IC de 95\%.}
+\label{fig:ckpt}
+\end{figure}
+
+O melhor \textit{checkpoint} elevou a referência de 200 para 236 [212, 252] e a configuração $512\times512$ de 154 [15, 241] para 251 [240, 261], com desvio-padrão de apenas 18 (Figura~\ref{fig:ckpt}). Ou seja, essa configuração aprende políticas melhores; o que a prejudica é a instabilidade no fim do treino. No SB3, o melhor \textit{checkpoint} ocorre cedo (mediana de 80 mil passos) e ainda assim fica em $-9$.
+
+\section{Conclusão}
+\label{sec:concl}
+Implementamos o DQN do zero, com todos os seus elementos essenciais, e o validamos no Lunar Lander. Na configuração final ($\alpha$ de $10^{-3}$ decaindo até $5\cdot10^{-5}$, rede alvo a cada 2000 passos, \textit{clipping} do gradiente e 1 milhão de passos), o agente atingiu retorno médio de 269 [263, 274] em 20 sementes que nunca participaram da escolha, com 92\% de pousos bem-sucedidos, contra $-12$ do DQN do SB3 na configuração padrão com o mesmo orçamento. A busca de hiperparâmetros mostrou que $\gamma$, a frequência de atualização da rede alvo, a taxa de aprendizado e o número de passos são os fatores de maior impacto. Mostrou também uma lição de método: com poucas sementes, a busca superestima as configurações escolhidas, e só a avaliação em sementes que não participaram da escolha revela isso. Separando as sementes de escolha, de confirmação e de teste, o ajuste final com 1 milhão de passos produziu um ganho que se manteve em sementes novas: $+16{,}8$ pontos [5, 29] sobre a configuração anterior, nas mesmas sementes. O principal limite do DQN observado foi o colapso no fim do treino, atenuado pelas estabilizações e contornado pela seleção do melhor \textit{checkpoint}.
+
+Como limitações, a busca não foi exaustiva e cada configuração teve poucas sementes durante a seleção. Como melhorias, citamos uma busca conjunta (aleatória ou bayesiana) já no orçamento de 1 milhão de passos, selecionar o melhor \textit{checkpoint} com episódios de validação próprios, e variantes do DQN como Double DQN, que reduz a superestimação dos valores Q, uma causa conhecida desses colapsos, \textit{dueling} e \textit{prioritized replay}.
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+\end{document}

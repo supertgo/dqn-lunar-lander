@@ -222,7 +222,6 @@ __marimo__/
 # --- projeto ---
 # Pesos de modelos ficam fora do git (compartilhar o melhor via Drive/Release)
 *.pt
-results/runs/*/model.zip
 # Derivados de results/runs/ — regenerados por scripts/aggregate.py
 results/aggregated/
 # Build do LaTeX
@@ -234,18 +233,11 @@ report/*.synctex.gz
 report/*.fls
 report/*.fdb_latexmk
 report/*.pdf
+!report/relatorio.pdf
 results/smoke/
-results/extra/*/*/model.pt
-results/extra/*/*/best_model.pt
-results/extra/*/*/model.zip
-results/extra/*/*/best_model.zip
 
-# Experimentos da busca: ficam só localmente. No git, apenas o resultado final
-# (configs/sweeps/final.yaml, dqn-39b3e6) e o SB3 padrão comparado com ele (sb3-72ba93, 1M passos).
-results/runs/*
-!results/runs/dqn-39b3e6_s*/
-!results/runs/sb3-72ba93_s*/
-results/extra/
-results/search/
-configs/sweeps/rounds/
-configs/sweeps/extra/
+# Resultados: todos os arquivos leves (config, meta, CSV, JSON) vão para o git;
+# os pesos dos modelos (*.pt acima, *.zip do SB3) ficam fora.
+results/**/*.zip
+# Pacote de entrega (make entrega)
+dqn-lunar-lander.zip

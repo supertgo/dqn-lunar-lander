@@ -1,0 +1,8 @@
+# Etapa 13 — combinação das mudanças confirmadas, seeds 30–49, com a final como controle.
+name: round_13_combo
+seeds: [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+  49]
+variants:
+- {max_grad_norm: 10.0, learning_rate_end: 5.0e-05, total_timesteps: 1000000}
+- {max_grad_norm: 10.0, learning_rate_end: 5.0e-05, total_timesteps: 1000000, learning_rate: 0.001,
+  target_update_interval: 2000}

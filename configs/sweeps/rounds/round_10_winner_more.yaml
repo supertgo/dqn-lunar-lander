@@ -1,0 +1,6 @@
+# Rodada 10 — mais 10 seeds novas (20–29) para a rede 512×512 estabilizada (241.5 ± 29 nas seeds 10–19),
+# para ela ficar com 20 seeds como a configuração final.
+name: round_10_winner_more
+seeds: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+variants:
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, max_grad_norm: 10.0, learning_rate_end: 0.00005}
