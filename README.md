@@ -110,3 +110,18 @@ não importa bibliotecas proibidas pela spec.
 - `aggregate.py` lê as runs concluídas e gera tabelas em `results/aggregated/`, que fica fora do git.
 - `make_figures.py` lê cada sweep de `configs/sweeps/`, encontra as runs pelo `run_id` e gera as
   figuras em `report/figures/`.
+
+## Executar
+
+Com `uv` instalado, use os comandos do `Makefile`:
+
+```bash
+make install                 # instala as dependências de uv.lock
+make run                     # teste rápido ponta a ponta (sweep smoke)
+make sweeps                  # executa os sweeps de hiperparâmetros e o final
+make plots                   # gera as figuras em report/figures/
+make seminar-plots           # gera as figuras do seminário em docs/figures/
+make all WORKERS=4           # executa os sweeps em até 4 processos e gera as figuras
+```
+
+As runs concluídas são ignoradas automaticamente, então é possível repetir `make sweeps` para retomar execuções interrompidas. `make plots` usa as runs já presentes em `results/runs/` e avisa quais sweeps ainda não têm resultados; use `make all` para executar os experimentos antes de gerar as figuras. `make seminar-plots` executa `scripts/report_figures.py` e exige as configurações locais `round_09_steps.yaml`, `round_09_stability.yaml` e `round_09_winner_stable.yaml` em `configs/sweeps/rounds/`.
