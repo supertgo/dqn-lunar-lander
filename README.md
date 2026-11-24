@@ -4,6 +4,47 @@ Trabalho prático de Aprendizado por Reforço (UFMG, 2026/2): implementação do
 do zero (NumPy + PyTorch) no ambiente Lunar Lander do Gymnasium, busca de hiperparâmetros e
 comparação com o DQN do Stable Baselines3. A especificação está em [`docs/RL_TP_Grad.pdf`](docs/RL_TP_Grad.pdf).
 
+## Pacotes e dependências
+
+### Requisitos
+
+- Python 3.11 ou 3.12
+- [`uv`](https://docs.astral.sh/uv/) para criar o ambiente e instalar as dependências travadas
+- `make` para utilizar os comandos automatizados do projeto
+- Linux, Windows ou macOS
+
+As dependências do projeto são declaradas em [`pyproject.toml`](pyproject.toml) e travadas em
+[`uv.lock`](uv.lock). Para instalar o ambiente padrão, execute:
+
+```bash
+make install
+```
+
+### Dependências principais
+
+| Pacote | Uso no projeto |
+|---|---|
+| `gymnasium[box2d]` | Criação e execução do ambiente LunarLander |
+| `torch` | Rede neural, otimização e treinamento do DQN |
+| `numpy` | Manipulação de estados, ações e dados numéricos |
+| `pandas` | Agregação e análise dos resultados das execuções |
+| `matplotlib` | Geração dos gráficos e figuras do relatório |
+| `pyyaml` | Leitura dos arquivos de configuração em YAML |
+
+### Dependências opcionais e de desenvolvimento
+
+| Pacote | Instalação/uso |
+|---|---|
+| `stable-baselines3` | Dependência opcional do baseline DQN em `scripts/run_sb3.py`; instale com `uv sync --locked --extra sb3` |
+| `pytest` | Execução dos testes automatizados |
+| `ruff` | Verificação de estilo e lint |
+
+Os pacotes opcionais de desenvolvimento podem ser instalados junto com o ambiente principal com:
+
+```bash
+uv sync --locked --extra sb3
+```
+
 ## Arquitetura
 
 O trabalho é feito por três pessoas em máquinas diferentes. A arquitetura existe para garantir três coisas:
