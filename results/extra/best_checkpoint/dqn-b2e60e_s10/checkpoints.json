@@ -1,0 +1,23 @@
+{
+  "run_id": "dqn-b2e60e_s10",
+  "config_id": "dqn-b2e60e",
+  "algo": "dqn",
+  "seed": 10,
+  "eval_seed": 20000,
+  "best_step": 270000,
+  "best_selection_return": 276.26792993641584,
+  "last": {
+    "mean_return": 220.4703022463335,
+    "std_return": 65.83773084305243,
+    "success_rate": 0.56,
+    "mean_length": 641.1,
+    "n_episodes": 100
+  },
+  "best": {
+    "mean_return": 247.11192989267295,
+    "std_return": 92.58292877657847,
+    "success_rate": 0.88,
+    "mean_length": 248.96,
+    "n_episodes": 100
+  }
+}

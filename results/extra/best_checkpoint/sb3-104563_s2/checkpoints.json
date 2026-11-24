@@ -1,0 +1,23 @@
+{
+  "run_id": "sb3-104563_s2",
+  "config_id": "sb3-104563",
+  "algo": "sb3",
+  "seed": 2,
+  "eval_seed": 20000,
+  "best_step": 60000,
+  "best_selection_return": 63.49215224513932,
+  "last": {
+    "mean_return": -36.289368792132166,
+    "std_return": 29.925204974174267,
+    "success_rate": 0.0,
+    "mean_length": 1000.0,
+    "n_episodes": 100
+  },
+  "best": {
+    "mean_return": -16.120573503124028,
+    "std_return": 145.5086827600605,
+    "success_rate": 0.11,
+    "mean_length": 814.35,
+    "n_episodes": 100
+  }
+}

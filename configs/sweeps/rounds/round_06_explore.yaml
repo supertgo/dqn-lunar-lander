@@ -1,0 +1,7 @@
+# Rodada 6 — última exploração com 5 seeds em torno de batch 256 + train_freq 2 + rede 512×512.
+name: round_06_explore
+seeds: [0, 1, 2, 3, 4]
+variants:
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, target_update_interval: 500}
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, epsilon_end: 0.01}
+  - {train_freq: 2, hidden_sizes: [512, 512], batch_size: 256, learning_starts: 10000}

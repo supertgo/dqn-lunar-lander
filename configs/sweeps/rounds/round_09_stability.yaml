@@ -1,0 +1,9 @@
+# Rodada 9 — estabilização do treino contra o colapso tardio, avaliada direto em seeds novas (10–29),
+# para comparar com a referência nas mesmas 20 seeds (200.5 ± 65.3).
+# max_grad_norm 10 é o valor padrão do SB3; o lr decai linearmente de 5e-4 até 5e-5.
+name: round_09_stability
+seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+variants:
+  - {max_grad_norm: 10.0}
+  - {learning_rate_end: 0.00005}
+  - {max_grad_norm: 10.0, learning_rate_end: 0.00005}

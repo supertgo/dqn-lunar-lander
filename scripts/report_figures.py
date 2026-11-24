@@ -1,4 +1,4 @@
-"""Gera as figuras e os números do relatório (docs/figures/ e docs/figures/numeros.json).
+"""Gera as figuras e os números do relatório (report/figures/ e report/figures/numeros.json).
 
 Separação central: seeds 0–9 foram usadas para escolher configurações ("seeds da busca");
 seeds >= 10 nunca participaram da escolha ("seeds novas") e dão a estimativa sem viés de seleção.
@@ -21,7 +21,7 @@ from matplotlib.ticker import FuncFormatter
 
 from dqn.config import CONFIGS_DIR, RESULTS_DIR, ROOT, load_sweep
 
-OUT = ROOT / "docs" / "figures"
+OUT = ROOT / "report" / "figures"
 EXTRA = ROOT / "results" / "extra" / "best_checkpoint"
 FRESH = 10  # seeds >= FRESH não participaram da seleção
 REF = "dqn-b3a10c"
@@ -174,15 +174,22 @@ def _ci_band(curves: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame({"step": grid, "mean": vals.mean(axis=0), "lo": lo, "hi": hi})
 
 
-def fig_final(runs: pd.DataFrame, best_stab: str | None) -> dict:
-    sb3 = runs[runs["algo"] == "sb3"]
-    series = [(REF, "DQN (nosso), referência", C_REF)]
-    if best_stab:
-        series.append((best_stab, "DQN (nosso), estabilizado", C_ALT))
+FINAL = "dqn-39b3e6"  # configs/sweeps/final.yaml (seeds 30–49)
+STAB_1M = "dqn-0bde89"  # final anterior: referência + estabilizações, 1M passos
+SB3_300K, SB3_1M = "sb3-104563", "sb3-72ba93"
+CONTROL_SEEDS = range(30, 50)  # seeds em que a final e o controle rodaram juntos
+
+
+def fig_final(runs: pd.DataFrame) -> dict:
+    series = [
+        (FINAL, "DQN (nosso), final", C_REF, CONTROL_SEEDS),
+        (STAB_1M, "DQN (nosso), lr 5e-4 e alvo 1000", C_ALT, CONTROL_SEEDS),
+        (SB3_1M, "DQN (SB3), padrão", C_SB3, range(0, 5)),
+    ]
     out = {}
     fig, ax = plt.subplots(figsize=(4.6, 2.8))
-    for i, (cid, label, color) in enumerate(series + [(sb3["config_id"].iloc[0], "DQN (SB3), padrão", C_SB3)]):
-        seeds = runs[(runs["config_id"] == cid) & ((runs["seed"] >= FRESH) | (runs["algo"] == "sb3"))]
+    for i, (cid, label, color, seed_range) in enumerate(series):
+        seeds = runs[(runs["config_id"] == cid) & runs["seed"].isin(list(seed_range))]
         curves = mf.load_curves(RESULTS_DIR, [cid])
         curves = curves[curves["seed"].isin(seeds["seed"])]
         b = _ci_band(curves)
@@ -267,7 +274,15 @@ def main() -> None:
 
     fig_sweeps(runs)
     numbers["selection"] = fig_selection(runs)
-    numbers["final"] = fig_final(runs, best_stab)
+    numbers["final"] = fig_final(runs)
+    numbers["stab_1m_10_29"] = stats(fresh[(fresh["config_id"] == STAB_1M) & (fresh["seed"] < 30)])
+    for cid in sorted(runs[runs["algo"] == "sb3"]["config_id"].unique()):
+        g = runs[runs["config_id"] == cid]
+        numbers[f"sb3_{int(g['total_timesteps'].iloc[0])}"] = stats(g)
+    numbers["sb3_300k"] = stats(runs[runs["config_id"] == SB3_300K])
+    numbers["final_300k"] = stats(fresh[fresh["config_id"] == "dqn-78d3c8"])
+    w = fresh[fresh["config_id"] == "dqn-3bc15f"]
+    numbers["wide_stab"] = stats(w)
     numbers["checkpoint"] = fig_checkpoint()
     numbers["n_runs"] = int(len(runs))
     (OUT / "numeros.json").write_text(json.dumps(numbers, indent=1, ensure_ascii=False))

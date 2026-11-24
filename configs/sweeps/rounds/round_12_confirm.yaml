@@ -1,0 +1,6 @@
+# Etapa 12 — confirmação nas seeds 20–29 de: alvo 2000, lr 1e-3.
+name: round_12_confirm
+seeds: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+variants:
+- {max_grad_norm: 10.0, learning_rate_end: 5.0e-05, total_timesteps: 1000000, target_update_interval: 2000}
+- {max_grad_norm: 10.0, learning_rate_end: 5.0e-05, total_timesteps: 1000000, learning_rate: 0.001}

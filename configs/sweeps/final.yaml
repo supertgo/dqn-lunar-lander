@@ -1,7 +1,9 @@
-# Configuração final: a referência (hyperparameters.yaml) com as duas estabilizações da rodada 9
-# (clipping do gradiente + decaimento linear do lr), avaliada nas 20 seeds novas, que não
-# participaram da escolha. Compare com o SB3 padrão: scripts/run_sb3.py --seeds 0 1 2 3 4
+# Configuração final: a referência (hyperparameters.yaml) com 1 milhão de passos, clipping do
+# gradiente (norma 10), lr inicial 1e-3 decaindo linearmente até 5e-5 e rede alvo a cada 2000
+# passos. Avaliada nas seeds 30–49, que nunca foram usadas para escolher nada.
+# Compare com o SB3 padrão no mesmo orçamento:
+#   scripts/run_sb3.py --total-timesteps 1000000 --seeds 0 1 2 3 4
 name: final
-seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+seeds: [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
 variants:
-  - {max_grad_norm: 10.0, learning_rate_end: 0.00005}
+  - {learning_rate: 0.001, learning_rate_end: 0.00005, target_update_interval: 2000, max_grad_norm: 10.0, total_timesteps: 1000000}

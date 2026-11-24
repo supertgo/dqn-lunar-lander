@@ -1,0 +1,6 @@
+# Etapa 14 — final com 2M passos (lr decai ao longo dos 2M), seeds 10–29; SB3 com 2M em paralelo.
+name: round_14_2M
+seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+  29]
+variants:
+- {max_grad_norm: 10.0, learning_rate_end: 5.0e-05, total_timesteps: 2000000}

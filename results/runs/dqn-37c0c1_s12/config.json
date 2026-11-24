@@ -1,0 +1,33 @@
+{
+  "algo": "dqn",
+  "hyperparameters": {
+    "learning_rate": 0.0005,
+    "gamma": 0.99,
+    "batch_size": 128,
+    "buffer_size": 300000,
+    "learning_starts": 5000,
+    "target_update_interval": 1000,
+    "epsilon_start": 1.0,
+    "epsilon_end": 0.05,
+    "epsilon_decay_steps": 50000,
+    "total_timesteps": 1000000,
+    "train_freq": 4,
+    "hidden_sizes": [
+      256,
+      256
+    ],
+    "max_grad_norm": 10.0,
+    "learning_rate_end": 5e-05
+  },
+  "evaluation": {
+    "env_id": "LunarLander-v3",
+    "eval_freq": 10000,
+    "eval_episodes": 10,
+    "final_eval_episodes": 100,
+    "eval_seed": 10000,
+    "solved_threshold": 200
+  },
+  "seed": 12,
+  "config_id": "dqn-37c0c1",
+  "run_id": "dqn-37c0c1_s12"
+}

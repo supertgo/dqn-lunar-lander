@@ -16,7 +16,7 @@ help:
 	@echo "  make run              executa o sweep smoke (teste ponta a ponta)"
 	@echo "  make sweeps           executa os sweeps, exceto o smoke"
 	@echo "  make plots            gera as figuras em report/figures/"
-	@echo "  make seminar-plots    gera as figuras do seminário em docs/figures/"
+	@echo "  make seminar-plots    gera as figuras do relatório em report/figures/"
 	@echo "  make all              executa os sweeps e gera as figuras"
 	@echo "  make sweeps WORKERS=4 executa até 4 runs em paralelo"
 
