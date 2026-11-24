@@ -216,6 +216,9 @@ def variant_labels(
 def main() -> None:
     from dqn.config import load_sweep  # só o main depende do config.py (Pessoa B)
 
+    runs = load_runs(RESULTS_DIR)
+    completed_config_ids = set(runs["config_id"])
+
     for path in sorted((CONFIGS_DIR / "sweeps").glob("*.yaml")):
         sweep = load_sweep(path)
 
@@ -226,10 +229,15 @@ def main() -> None:
         labels = variant_labels(sweep.run_configs(), keys, default="DQN (nosso)")
 
         if sweep.name == "final":
-            runs = load_runs(RESULTS_DIR)
-
             for config_id in runs[runs["algo"] == "sb3"]["config_id"].unique():
                 labels[config_id] = "DQN (SB3)"
+
+        if not completed_config_ids.intersection(labels):
+            print(
+                f"[skip] {sweep.name}: nenhuma run concluída; "
+                "execute `make sweeps` antes de gerar esta figura."
+            )
+            continue
 
         out = sweep_figure(
             RESULTS_DIR, labels, sweep.name, FIGURES_DIR / f"{sweep.name}.pdf", " / ".join(keys)

@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 from fake_runs import write_fake_run
 from make_figures import (
     format_steps,
@@ -112,6 +113,42 @@ def test_sweep_figure_writes_file(tmp_path):
 
     assert out.is_file()
     assert out.stat().st_size > 0
+
+
+def test_main_skips_sweeps_without_completed_runs(tmp_path, monkeypatch, capsys):
+    import dqn.config
+    import make_figures
+
+    sweeps_dir = tmp_path / "configs" / "sweeps"
+    sweeps_dir.mkdir(parents=True)
+    (sweeps_dir / "learning_rate.yaml").touch()
+    monkeypatch.setattr(make_figures, "CONFIGS_DIR", tmp_path / "configs")
+    monkeypatch.setattr(make_figures, "RESULTS_DIR", tmp_path / "runs")
+    monkeypatch.setattr(
+        dqn.config,
+        "load_sweep",
+        lambda _: SimpleNamespace(
+            name="learning_rate",
+            variants=[{"learning_rate": 1e-3}],
+            run_configs=lambda: [
+                SimpleNamespace(config_id="dqn-missing", hyperparameters={"learning_rate": 1e-3})
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        make_figures,
+        "load_runs",
+        lambda _: pd.DataFrame(columns=["config_id", "algo"]),
+    )
+    monkeypatch.setattr(
+        make_figures,
+        "sweep_figure",
+        lambda *args, **kwargs: pytest.fail("não deve plotar sweep sem resultados"),
+    )
+
+    make_figures.main()
+
+    assert "[skip] learning_rate: nenhuma run concluída" in capsys.readouterr().out
 
 
 def test_format_steps_keeps_distinct_ticks_distinct():
