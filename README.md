@@ -69,7 +69,7 @@ dqn-lunar-lander/
 │       ├── batch_size.yaml  target_update.yaml  epsilon.yaml
 │       ├── final.yaml           # configuração final (1M passos, seeds 30–49)
 │       ├── smoke.yaml           # teste rápido de ponta a ponta
-│       ├── rounds/              # rodadas 1 a 14 da busca (a rodada 0 são os sweeps de um fator acima)
+│       ├── rounds/              # rodadas 1 a 15 da busca (a rodada 0 são os sweeps de um fator acima)
 │       └── extra/               # análise extra do melhor checkpoint
 ├── src/dqn/                     # pacote do DQN — nunca importa SB3/RLlib/Keras-RL
 │   ├── network.py               # rede Q
@@ -188,6 +188,8 @@ uv run --locked python scripts/run_sweep.py configs/sweeps/final.yaml --workers 
 uv run --locked --extra sb3 python scripts/run_sb3.py --total-timesteps 1000000 --seeds 0 1 2 3 4
 # uma rodada específica da busca, por exemplo o estudo do número de passos
 uv run --locked python scripts/run_sweep.py configs/sweeps/rounds/round_09_steps.yaml --workers 4
+# ablação de ε na configuração final (80 runs de 1M passos)
+uv run --locked python scripts/run_sweep.py configs/sweeps/rounds/round_15_epsilon.yaml --workers 4
 # análise extra do melhor checkpoint
 uv run --locked python scripts/run_sweep.py configs/sweeps/extra/*.yaml --workers 4
 uv run --locked --extra sb3 python scripts/run_sb3.py --seeds 0 1 2 3 4 --results-dir results/extra/best_checkpoint

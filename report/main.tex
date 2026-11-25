@@ -13,6 +13,8 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+\usepackage{makecell}
 
 \renewcommand{\IEEEkeywordsname}{Palavras-chave}
 
@@ -33,10 +35,10 @@
 
 \author{
 \IEEEauthorblockN{Beatriz Camilly Gulart Pereira}
-\IEEEauthorblockA{DCC -- UFMG\\Matrícula: [matrícula]\\Belo Horizonte, Brasil}
+\IEEEauthorblockA{DCC -- UFMG\\Matrícula: 2023087753 \\Belo Horizonte, Brasil}
 \and
 \IEEEauthorblockN{Maria Eduarda Nunes e Carvalho\\de Vasconcelos Costa}
-\IEEEauthorblockA{DCC -- UFMG\\Matrícula: [matrícula]\\Belo Horizonte, Brasil}
+\IEEEauthorblockA{DCC -- UFMG\\Matrícula: 2023087982\\Belo Horizonte, Brasil}
 \and
 \IEEEauthorblockN{Thiago Roberto Magalhães}
 \IEEEauthorblockA{DCC -- UFMG\\Matrícula: 2022066051\\Belo Horizonte, Brasil}
@@ -45,7 +47,7 @@
 \maketitle
 
 \begin{abstract}
-Este trabalho implementa o \textit{Deep Q-Network} (DQN), com NumPy e PyTorch, para o ambiente Lunar Lander do Gymnasium. Descrevemos os elementos essenciais do algoritmo (rede Q, rede alvo, \textit{replay buffer}, política $\varepsilon$-\textit{greedy} com decaimento, treinamento e avaliação) e a infraestrutura usada para tornar os experimentos reprodutíveis. Investigamos o efeito de sete hiperparâmetros em uma busca em rodadas, com 719 execuções, e validamos as configurações escolhidas em sementes que não participaram da escolha, o que revelou um forte viés de seleção na busca. Com \textit{clipping} do gradiente e decaimento da taxa de aprendizado contra o colapso tardio do treino, 1 milhão de passos e um ajuste fino nesse orçamento, a configuração final atingiu retorno médio de 269 (IC de 95\%: [263, 274]), com 92\% de pousos bem-sucedidos, contra $-12$ do DQN do Stable Baselines3 na configuração padrão com o mesmo orçamento.
+Este trabalho implementa o \textit{Deep Q-Network} (DQN), com NumPy e PyTorch, para o ambiente Lunar Lander do Gymnasium. Descrevemos os elementos essenciais do algoritmo (rede Q, rede alvo, \textit{replay buffer}, política $\varepsilon$-\textit{greedy} com decaimento, treinamento e avaliação) e a infraestrutura usada para tornar os experimentos reprodutíveis. Investigamos o efeito de sete hiperparâmetros em uma busca em rodadas, com 799 execuções, e validamos as configurações escolhidas em sementes que não participaram da escolha, o que revelou um forte viés de seleção na busca. Com \textit{clipping} do gradiente e decaimento da taxa de aprendizado contra o colapso tardio do treino, 1 milhão de passos e um ajuste fino nesse orçamento, a configuração final atingiu retorno médio de 269 (IC de 95\%: [263, 274]), com 92\% de pousos bem-sucedidos, contra $-12$ do DQN do Stable Baselines3 na configuração padrão com o mesmo orçamento.
 \end{abstract}
 
 \section{Introdução}
@@ -92,7 +94,7 @@ em que $d$ indica fim de episódio por estado terminal (e não por truncamento p
 com $\ell$ a perda de Huber e otimizador Adam. As atualizações começam após $T_0$ passos (\texttt{learning\_starts}), para que o \textit{buffer} já tenha transições variadas, e ocorrem uma vez a cada $k$ passos de ambiente (\texttt{train\_freq}). Dois mecanismos opcionais de estabilização, desligados na referência e ligados na configuração final, foram avaliados na Seção~\ref{sec:estab}: o \textit{clipping} da norma do gradiente (\texttt{max\_grad\_norm}) e o decaimento linear da taxa de aprendizado de $\alpha$ até $\alpha_{\text{fim}}$ ao longo do treino (\texttt{learning\_rate\_end}).
 
 \subsection{\textit{Replay buffer} e exploração $\varepsilon$-\textit{greedy}}
-O \textit{buffer} \texttt{(replay\_buffer.py)} é uma lista circular de capacidade $|\mathcal{D}|$: cada transição é guardada como uma tupla com cópias dos estados e, quando a lista enche, a nova transição sobrescreve a mais antiga. A amostragem é uniforme, com reposição entre lotes e sem reposição dentro de cada lote; as transições sorteadas são empilhadas em arrays NumPy, um por campo, para formar o lote. A política \texttt{(exploration.py)} escolhe uma ação aleatória com probabilidade $\varepsilon_t$ e a ação de maior $Q_\theta$ caso contrário. O valor de $\varepsilon$ decai linearmente de $\varepsilon_0$ a $\varepsilon_{\min}$ em $T_\varepsilon$ passos:
+O \textit{buffer} \texttt{(replay\_buffer.py)} é uma lista circular de capacidade $|\mathcal{D}|$: cada transição é guardada como uma tupla com cópias dos estados e, quando a lista enche, a nova transição sobrescreve a mais antiga. A amostragem é uniforme, sem reposição dentro de cada lote; chamadas sucessivas podem selecionar novamente as mesmas transições. Ao amostrar, os índices sorteados são usados para reunir temporariamente as transições em uma lista, e cada campo (\texttt{obs}, \texttt{actions}, \texttt{rewards}, \texttt{next\_obs} e \texttt{dones}) é convertido separadamente em um array NumPy para formar o lote. Assim, os arrays NumPy são criados durante a amostragem; o armazenamento persistente do buffer é uma lista Python. A política \texttt{(exploration.py)} escolhe uma ação aleatória com probabilidade $\varepsilon_t$ e a ação de maior $Q_\theta$ caso contrário. O valor de $\varepsilon$ decai linearmente de $\varepsilon_0$ a $\varepsilon_{\min}$ em $T_\varepsilon$ passos:
 \begin{equation}
 \varepsilon_t=\max\!\Big(\varepsilon_{\min},\ \varepsilon_0-(\varepsilon_0-\varepsilon_{\min})\,\tfrac{t}{T_\varepsilon}\Big).
 \end{equation}
@@ -107,20 +109,21 @@ Uma execução é definida por (algoritmo, hiperparâmetros, protocolo de avalia
 \label{sec:aval}
 
 \subsection{Protocolo e métricas}
-A busca treina cada execução por $T=300$ mil passos de ambiente, exceto no estudo do próprio $T$; a configuração final e a comparação com o SB3 usam 1 milhão de passos (Seção~\ref{sec:final}). A cada 10 mil passos, a política gulosa é avaliada em 10 episódios, o que produz as curvas de aprendizado. Ao fim do treino, o modelo do último passo é avaliado em 100 episódios; o episódio $i$ usa a semente $10000+i$, a mesma para todas as configurações e para o SB3. Reportamos o \textbf{retorno médio} dessa avaliação final e a \textbf{taxa de sucesso}, fração de episódios com retorno $\ge 200$. Seguindo as recomendações para estatística em aprendizado por reforço~\cite{agarwal2021,patterson2023}, a unidade de análise é a semente de treino, e não o episódio: cada semente contribui com um número (a média dos seus 100 episódios), e apresentamos a média entre sementes com intervalo de confiança (IC) de 95\% por \textit{bootstrap} percentil. Os experimentos rodaram em uma máquina de 28 \textit{threads}, com uma \textit{thread} por execução e até 25 execuções simultâneas; cada execução da configuração de referência leva cerca de 5 minutos. Ao todo foram 719 execuções, mais 35 da análise do melhor \textit{checkpoint} (Seção~\ref{sec:ckpt}).
+A busca treina cada execução por $T=300$ mil passos de ambiente, exceto no estudo do próprio $T$; a configuração final e a comparação com o SB3 usam 1 milhão de passos (Seção~\ref{sec:final}). A cada 10 mil passos, a política gulosa é avaliada em 10 episódios, o que produz as curvas de aprendizado. Ao fim do treino, o modelo do último passo é avaliado em 100 episódios; o episódio $i$ usa a semente $10000+i$, a mesma para todas as configurações e para o SB3. Reportamos o \textbf{retorno médio} dessa avaliação final e a \textbf{taxa de sucesso}, fração de episódios com retorno $\ge 200$. Seguindo as recomendações para estatística em aprendizado por reforço~\cite{agarwal2021,patterson2023}, a unidade de análise é a semente de treino, e não o episódio: cada semente contribui com um número (a média dos seus 100 episódios), e apresentamos a média entre sementes com intervalo de confiança (IC) de 95\% por \textit{bootstrap} percentil. Os experimentos rodaram em uma máquina de 28 \textit{threads}, com uma \textit{thread} por execução e até 25 execuções simultâneas; cada execução da configuração de referência leva cerca de 5 minutos. Ao todo foram 799 execuções, mais 35 da análise do melhor \textit{checkpoint} (Seção~\ref{sec:ckpt}).
 
 \subsection{Metodologia da busca}
-A busca foi feita em rodadas. A rodada inicial variou um hiperparâmetro por vez a partir da referência (Tabela~\ref{tab:sweeps}), com 3 sementes. As rodadas seguintes partiram das melhores configurações: combinaram valores promissores, exploraram eixos novos (arquitetura da rede, frequência de atualização $k$, início do treino $T_0$) e deram mais sementes às líderes. Ao todo foram 15 rodadas: as 10 primeiras com 300 mil passos e as 5 últimas em torno da configuração com 1 milhão de passos (Seção~\ref{sec:final}). A escolha usou o \textit{score} média $-$ desvio-padrão entre sementes, que penaliza configurações instáveis.
+A busca foi feita em rodadas. A rodada inicial variou um hiperparâmetro por vez a partir da referência (Tabela~\ref{tab:sweeps}), com 3 sementes. As rodadas seguintes partiram das melhores configurações: combinaram valores promissores, exploraram eixos novos (arquitetura da rede, frequência de atualização $k$, início do treino $T_0$) e deram mais sementes às líderes. Ao todo foram 16 rodadas: as 10 primeiras com 300 mil passos e as 6 últimas em torno da configuração com 1 milhão de passos (Seção~\ref{sec:final}). A escolha usou o \textit{score} média $-$ desvio-padrão entre sementes, que penaliza configurações instáveis.
 
 Um cuidado foi decisivo: separar as sementes usadas para \textbf{escolher} configurações (0 a 9, ``sementes da busca'') das usadas para \textbf{medir} o resultado (10 a 29, ``sementes novas''). Quando se escolhe a melhor entre dezenas de configurações avaliadas nas mesmas poucas sementes, a escolhida tende a ser a que teve sorte, e seu desempenho nessas sementes superestima o real. Só as sementes novas dão uma estimativa sem esse viés de seleção. No ajuste final, com 1 milhão de passos, a separação foi levada adiante em três grupos: sementes 10 a 19 para escolher, 20 a 29 para confirmar e 30 a 49 para o teste final, com a configuração anterior rodando nas mesmas sementes como controle.
+
 
 \begin{table}[t]
 \centering
 \caption{Busca de um fator por vez a partir da referência (em negrito). Entre parênteses, o retorno médio da avaliação final com as sementes 0 a 2; para $T$, com as sementes novas 10 a 29.}
 \label{tab:sweeps}
-\small
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lp{6.1cm}@{}}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\columnwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
 \toprule
 Hiperparâmetro & Valores testados (retorno) \\
 \midrule
@@ -132,8 +135,9 @@ $C$ & 250 (194), \textbf{1k} (219), 5k (194), 10k (82) \\
 $T_\varepsilon$ / $\varepsilon_{\min}$ & 10k/0,05 (219), \textbf{50k/0,05} (219), 150k/0,05 (203), 50k/0,01 (90) \\
 $T$ & 100k (37), \textbf{300k} (200), 500k (230), 1M (248) \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
+
 
 \subsection{Resultados da busca}
 A Figura~\ref{fig:sweeps} mostra o retorno final de cada valor testado. Os demais parâmetros fixos da referência são $\varepsilon_0=1$, $T_0=5000$, $k=4$ e rede $256\times256$.
@@ -159,19 +163,20 @@ As rodadas seguintes encontraram configurações que, nas sementes da busca, sup
 \centering
 \caption{Configurações escolhidas na busca, reavaliadas em sementes novas. Retorno médio [IC 95\%] e número de sementes.}
 \label{tab:selecao}
-\small
+\footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lcc@{}}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}Xcc@{}}
 \toprule
-Configuração & Sementes da busca & Sementes novas \\
+Configuração & \makecell{Sementes\\da busca} & \makecell{Sementes\\novas} \\
 \midrule
 Referência & 191 [116, 237] (5) & 201 [170, 226] (20) \\
 $B$ 256, $k$ 2, $512^2$, $\varepsilon_{\min}$ 0,01 & 243 [233, 256] (5) & 208 [148, 248] (10) \\
 $B$ 256, $k$ 2, $512^2$ & 245 [229, 256] (10) & 183 [115, 228] (20) \\
 $B$ 256, $k$ 2, $512^2$, $C$ 500 & 249 [230, 264] (10) & 183 [138, 222] (10) \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
+
 
 \begin{figure}[t]
 \centering
@@ -189,6 +194,26 @@ Como o principal problema observado foi o colapso tardio, testamos, sempre nas s
 Os dois achados de maior efeito foram juntados primeiro: a referência com as duas estabilizações e 1 milhão de passos atingiu $252{,}0$ [242, 261] nas 20 sementes novas, com desvio-padrão de 22. Com 1M passos, as estabilizações quase não mudam a média em relação à referência sem elas ($248{,}3$), mas reduzem o desvio-padrão de 40 para 22 e elevam a pior semente de 138 para 196. A rede $512\times512$ estabilizada, que parecia promissora com 10 sementes, ficou em $236{,}7$ [221, 250] com 20 sementes em 300k passos, com custo cerca de 5 vezes maior por execução, e não foi adotada.
 
 Como as conclusões da busca de 300k passos poderiam não valer com 1M, refizemos uma busca curta nesse orçamento, com seleção, confirmação e teste em sementes separadas. Primeiro, dez variações de um fator por vez (sementes 10 a 19): só a taxa de aprendizado inicial $10^{-3}$ (ainda decaindo até $5\cdot10^{-5}$) e a rede alvo a cada 2000 passos superaram a configuração de partida; $\gamma=0{,}995$, $C=500$ e \textit{clipping} em 1 a pioraram. Em seguida, as duas foram confirmadas em sementes novas (20 a 29): $277{,}6$ [273, 282] e $263{,}2$ [251, 273]. Por fim, a combinação das duas foi testada nas sementes 30 a 49, que nunca foram usadas para escolher nada, junto com a configuração de partida nas mesmas sementes como controle: $268{,}8$ [263, 274] contra $252{,}1$ [240, 264]. Comparando semente a semente, a diferença é de $16{,}8$ pontos [5, 29], e a combinação vence em 14 das 20 sementes. Com a taxa de aprendizado decaindo, um valor inicial maior acelera o início do treino sem a instabilidade que $10^{-3}$ mostrou com taxa constante; e a rede alvo mais lenta dá alvos mais estáveis quando o treino é longo. Essa é a configuração final (Tabela~\ref{tab:final}). Ela também é mais rápida: cerca de 22 minutos por execução, contra 30. Dobrar o orçamento para 2M passos não ajudou ($256{,}4\pm35{,}7$, sementes 10 a 29), e por isso mantivemos 1M.
+
+Por fim, para medir o efeito da exploração também no orçamento final, variamos os parâmetros de $\varepsilon$ na configuração final, um por vez, nas mesmas sementes 30 a 49 (Tabela~\ref{tab:eps}). Como essas sementes são as de teste, o resultado serve só como ablação e não foi usado para trocar a configuração. Nenhuma variação superou a configuração final. Decair $\varepsilon$ em 10 mil passos foi a pior escolha ($-16$ pontos [$-27$, $-6$]): com 1M passos, explorar só no início deixa o \textit{buffer} pobre antes de a política ser útil. Decair em 200 mil passos e reduzir $\varepsilon_{\min}$ para 0,01 custaram cerca de 12 pontos cada e aumentaram o desvio-padrão; o primeiro gasta passos demais com ações aleatórias, e o segundo explora pouco no resto do treino. Aumentar $\varepsilon_{\min}$ para 0,1 ficou estatisticamente empatado ($-4$ [$-13$, 5]), com uma taxa de sucesso um pouco menor. Ao contrário do que a busca de 300k passos com 3 sementes sugeria (Tabela~\ref{tab:sweeps}), em que 10k e 50k empataram, no orçamento de 1M o decaimento em 50 mil passos com $\varepsilon_{\min}=0{,}05$ é o melhor dos valores testados.
+
+\begin{table}[t]
+\centering
+\caption{Ablação de $\varepsilon$ na configuração final (1M passos, sementes 30 a 49). Diferença pareada em relação à final, semente a semente, com IC de 95\%.}
+\label{tab:eps}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+$T_\varepsilon$ / $\varepsilon_{\min}$ & Retorno [IC 95\%] & Sucesso & Diferença & Vence \\
+\midrule
+\textbf{50k / 0,05} (final) & 269 [263, 274] & 92\% & --- & --- \\
+10k / 0,05 & 253 [243, 262] & 85\% & $-16$ [$-27$, $-6$] & 6/20 \\
+200k / 0,05 & 257 [245, 267] & 88\% & $-12$ [$-25$; $-0{,}5$] & 7/20 \\
+50k / 0,01 & 257 [248, 265] & 88\% & $-12$ [$-23$, $-1$] & 6/20 \\
+50k / 0,10 & 265 [260, 270] & 89\% & $-4$ [$-13$, 5] & 9/20 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 A Figura~\ref{fig:final} mostra a evolução do retorno ao longo do treino.
 
@@ -217,22 +242,23 @@ O DQN do SB3 2.9.2~\cite{sb3} foi treinado na configuração padrão, com o mesm
 \centering
 \caption{Nosso DQN \textit{vs.} SB3 padrão. Média entre sementes [IC 95\%]; sementes novas para o nosso DQN.}
 \label{tab:sb3}
-\small
+\footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lccc@{}}
+\begin{tabularx}{\columnwidth}{@{}Xccc@{}}
 \toprule
-Método ($T$) & Sementes & Retorno $\uparrow$ & Sucesso (\%) $\uparrow$ \\
+Método ($T$) & Sem. & Retorno $\uparrow$ & \makecell{Sucesso\\(\%) $\uparrow$} \\
 \midrule
-DQN (nosso), final (1M) & 20 & 269 [263, 274] & 92 \\
-DQN (SB3), padrão (1M) & 5 & $-12$ [$-18$, $-5$] & 0 \\
-DQN (SB3), padrão (2M) & 5 & 59 [$-15$, 137] & 19 \\
+Nosso, final (1M) & 20 & 269 [263, 274] & 92 \\
+SB3, padrão (1M) & 5 & $-12$ [$-18$, $-5$] & 0 \\
+SB3, padrão (2M) & 5 & 59 [$-15$, 137] & 19 \\
 \midrule
-DQN (nosso), estabilizado (300k) & 20 & 223 [210, 236] & 78 \\
-DQN (nosso), referência (300k) & 20 & 201 [170, 226] & 64 \\
-DQN (SB3), padrão (300k) & 5 & $-39$ [$-57$, $-18$] & 1 \\
+Nosso, estabilizado (300k) & 20 & 223 [210, 236] & 78 \\
+Nosso, referência (300k) & 20 & 201 [170, 226] & 64 \\
+SB3, padrão (300k) & 5 & $-39$ [$-57$, $-18$] & 1 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
+
 
 \begin{figure}[t]
 \centering
@@ -258,7 +284,7 @@ O melhor \textit{checkpoint} elevou a referência de 200 para 236 [212, 252] e a
 
 \section{Conclusão}
 \label{sec:concl}
-Implementamos o DQN do zero, com todos os seus elementos essenciais, e o validamos no Lunar Lander. Na configuração final ($\alpha$ de $10^{-3}$ decaindo até $5\cdot10^{-5}$, rede alvo a cada 2000 passos, \textit{clipping} do gradiente e 1 milhão de passos), o agente atingiu retorno médio de 269 [263, 274] em 20 sementes que nunca participaram da escolha, com 92\% de pousos bem-sucedidos, contra $-12$ do DQN do SB3 na configuração padrão com o mesmo orçamento. A busca de hiperparâmetros mostrou que $\gamma$, a frequência de atualização da rede alvo, a taxa de aprendizado e o número de passos são os fatores de maior impacto. Mostrou também uma lição de método: com poucas sementes, a busca superestima as configurações escolhidas, e só a avaliação em sementes que não participaram da escolha revela isso. Separando as sementes de escolha, de confirmação e de teste, o ajuste final com 1 milhão de passos produziu um ganho que se manteve em sementes novas: $+16{,}8$ pontos [5, 29] sobre a configuração anterior, nas mesmas sementes. O principal limite do DQN observado foi o colapso no fim do treino, atenuado pelas estabilizações e contornado pela seleção do melhor \textit{checkpoint}.
+Implementamos o DQN do zero, com todos os seus elementos essenciais, e o validamos no Lunar Lander. Na configuração final ($\alpha$ de $10^{-3}$ decaindo até $5\cdot10^{-5}$, rede alvo a cada 2000 passos, \textit{clipping} do gradiente e 1 milhão de passos), o agente atingiu retorno médio de 269 [263, 274] em 20 sementes que nunca participaram da escolha, com 92\% de pousos bem-sucedidos, contra $-12$ do DQN do SB3 na configuração padrão com o mesmo orçamento. A busca de hiperparâmetros mostrou que $\gamma$, a frequência de atualização da rede alvo, a taxa de aprendizado e o número de passos são os fatores de maior impacto, e a ablação de $\varepsilon$ em 1 milhão de passos confirmou o decaimento em 50 mil passos até 0,05 como a melhor exploração entre as testadas. Mostrou também uma lição de método: com poucas sementes, a busca superestima as configurações escolhidas, e só a avaliação em sementes que não participaram da escolha revela isso. Separando as sementes de escolha, de confirmação e de teste, o ajuste final com 1 milhão de passos produziu um ganho que se manteve em sementes novas: $+16{,}8$ pontos [5, 29] sobre a configuração anterior, nas mesmas sementes. O principal limite do DQN observado foi o colapso no fim do treino, atenuado pelas estabilizações e contornado pela seleção do melhor \textit{checkpoint}.
 
 Como limitações, a busca não foi exaustiva e cada configuração teve poucas sementes durante a seleção. Como melhorias, citamos uma busca conjunta (aleatória ou bayesiana) já no orçamento de 1 milhão de passos, selecionar o melhor \textit{checkpoint} com episódios de validação próprios, e variantes do DQN como Double DQN, que reduz a superestimação dos valores Q, uma causa conhecida desses colapsos, \textit{dueling} e \textit{prioritized replay}.
 

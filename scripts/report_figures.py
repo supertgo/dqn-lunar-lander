@@ -251,6 +251,21 @@ def fig_checkpoint() -> dict:
     return out
 
 
+def epsilon_ablation(runs: pd.DataFrame) -> dict:
+    """Ablação de ε na configuração final, nas mesmas seeds (comparação pareada)."""
+    base = runs[runs["config_id"] == FINAL].set_index("seed")["mean_return"]
+    out = {}
+    for cid, hp in round_ids("round_15_epsilon"):
+        g = runs[runs["config_id"] == cid]
+        if not len(g):
+            continue
+        diff = g.set_index("seed")["mean_return"] - base.reindex(g["seed"]).to_numpy()
+        lo, hi = boot_ci(diff.to_numpy())
+        out[cid] = {"epsilon_end": hp["epsilon_end"], "epsilon_decay_steps": hp["epsilon_decay_steps"],
+                    **stats(g), "diff": float(diff.mean()), "diff_ci": [lo, hi], "wins": int((diff > 0).sum())}
+    return out
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     runs = load_runs(RESULTS_DIR)
@@ -283,6 +298,7 @@ def main() -> None:
     numbers["final_300k"] = stats(fresh[fresh["config_id"] == "dqn-78d3c8"])
     w = fresh[fresh["config_id"] == "dqn-3bc15f"]
     numbers["wide_stab"] = stats(w)
+    numbers["epsilon_1m"] = epsilon_ablation(runs)
     numbers["checkpoint"] = fig_checkpoint()
     numbers["n_runs"] = int(len(runs))
     (OUT / "numeros.json").write_text(json.dumps(numbers, indent=1, ensure_ascii=False))
