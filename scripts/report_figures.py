@@ -261,7 +261,7 @@ def epsilon_ablation(runs: pd.DataFrame) -> dict:
             continue
         diff = g.set_index("seed")["mean_return"] - base.reindex(g["seed"]).to_numpy()
         lo, hi = boot_ci(diff.to_numpy())
-        out[cid] = {"epsilon_end": hp["epsilon_end"], "epsilon_decay_steps": hp["epsilon_decay_steps"],
+        out[cid] = {"epsilon_start": hp["epsilon_start"], "epsilon_end": hp["epsilon_end"], "epsilon_decay_steps": hp["epsilon_decay_steps"],
                     **stats(g), "diff": float(diff.mean()), "diff_ci": [lo, hi], "wins": int((diff > 0).sum())}
     return out
 
