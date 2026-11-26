@@ -193,7 +193,7 @@
     "sweeps": [
       "configs/sweeps/rounds/round_15_epsilon.yaml"
     ],
-    "rationale": "Cumpre o eixo ε do enunciado no orçamento final: Tε 10k/200k e εmin 0.01/0.1 na configuração final, nas mesmas seeds 30 a 49 (comparação pareada; não troca a final).",
-    "conclusion": "Nenhuma variação superou a final (268.8): 10k 252.7 (−16.1), 200k 256.8 (−12.0), εmin 0.01 257.1 (−11.7), εmin 0.1 264.7 (−4.1, empate)."
+    "rationale": "Cumpre o eixo ε do enunciado no orçamento final: Tε 10k/200k, εmin 0.01/0.1 e ε0 0.5/0.25 na configuração final, nas mesmas seeds 30 a 49 (comparação pareada; não troca a final).",
+    "conclusion": "Nenhuma variação superou a final (268.8): 10k 252.7 (−16.1), 200k 256.8 (−12.0), εmin 0.01 257.1 (−11.7), εmin 0.1 264.7 (−4.1, empate). ε0 0.5 266.6 (−2.2, empate), ε0 0.25 262.0 (−6.8)."
   }
 ]

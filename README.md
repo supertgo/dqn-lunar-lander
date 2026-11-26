@@ -188,7 +188,7 @@ uv run --locked python scripts/run_sweep.py configs/sweeps/final.yaml --workers 
 uv run --locked --extra sb3 python scripts/run_sb3.py --total-timesteps 1000000 --seeds 0 1 2 3 4
 # uma rodada específica da busca, por exemplo o estudo do número de passos
 uv run --locked python scripts/run_sweep.py configs/sweeps/rounds/round_09_steps.yaml --workers 4
-# ablação de ε na configuração final (80 runs de 1M passos)
+# ablação de ε na configuração final (120 runs de 1M passos)
 uv run --locked python scripts/run_sweep.py configs/sweeps/rounds/round_15_epsilon.yaml --workers 4
 # análise extra do melhor checkpoint
 uv run --locked python scripts/run_sweep.py configs/sweeps/extra/*.yaml --workers 4

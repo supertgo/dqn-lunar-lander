@@ -1,7 +1,7 @@
 # Etapa 15 — ablação de ε na configuração final (cumpre o eixo ε do enunciado em 1M passos).
 # Mesmas seeds da final (30–49) para comparação pareada com dqn-39b3e6; a final NÃO é
 # trocada com base neste resultado (seria escolher nas seeds de teste).
-# Final: ε 1 → 0,05 em 50k passos.
+# Final: ε 1 → 0,05 em 50k passos. Varia T_ε, ε_min e ε_0, um por vez.
 name: round_15_epsilon
 seeds: [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
 variants:
@@ -9,3 +9,5 @@ variants:
 - {learning_rate: 0.001, learning_rate_end: 0.00005, target_update_interval: 2000, max_grad_norm: 10.0, total_timesteps: 1000000, epsilon_decay_steps: 200000}
 - {learning_rate: 0.001, learning_rate_end: 0.00005, target_update_interval: 2000, max_grad_norm: 10.0, total_timesteps: 1000000, epsilon_end: 0.01}
 - {learning_rate: 0.001, learning_rate_end: 0.00005, target_update_interval: 2000, max_grad_norm: 10.0, total_timesteps: 1000000, epsilon_end: 0.1}
+- {learning_rate: 0.001, learning_rate_end: 0.00005, target_update_interval: 2000, max_grad_norm: 10.0, total_timesteps: 1000000, epsilon_start: 0.5}
+- {learning_rate: 0.001, learning_rate_end: 0.00005, target_update_interval: 2000, max_grad_norm: 10.0, total_timesteps: 1000000, epsilon_start: 0.25}
